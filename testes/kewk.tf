@@ -17,12 +17,12 @@ resource "aws_autoscaling_group" "example" {
       version = "$Latest"
     }
   }
+
+  # Use a warm pool for the workers
+  warm_pool {
+    min_size     = 1
+    max_size     = 2
+    pool_state   = "stopped"
+    purge_policy = "OldestInstance"
+  }
 }
-
-
-
-Você pode substituir os valores de name, 
-launch_configuration, 
-min_size, max_size, 
-on_demand_allocation_strategy, 
-on_demand_base_capacity, spot_allocation_strategy, id e version pelos valores que desejar.
