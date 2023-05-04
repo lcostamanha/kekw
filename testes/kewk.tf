@@ -26,3 +26,6 @@ resource "aws_autoscaling_group" "example" {
     purge_policy = "OldestInstance"
   }
 }
+
+
+100 - (avg by (instance) (irate(node_filesystem_free_bytes{mountpoint="/"}[5m])) * 100) / (avg by (instance) (irate(node_filesystem_size_bytes{mountpoint="/"}[5m])) * 100)
