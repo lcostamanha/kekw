@@ -26,6 +26,3 @@ launch_configuration,
 min_size, max_size, 
 on_demand_allocation_strategy, 
 on_demand_base_capacity, spot_allocation_strategy, id e version pelos valores que desejar.
-
-
-#######
