@@ -28,13 +28,24 @@ resource "aws_autoscaling_group" "example" {
 }
 
 
-100 - (avg by (instance) (irate(node_filesystem_free_bytes{mountpoint="/"}[5m])) * 100) / (avg by (instance) (irate(node_filesystem_size_bytes{mountpoint="/"}[5m])) * 100)
+############################################################################################################
 
+# Importar o módulo unittest
+import unittest
 
-Para exportar dados do DynamoDB para o S3 usando o AWS CLI, você pode usar o seguinte comando:
+# Definir uma classe que herda de unittest.TestCase
+class TestGenerico(unittest.TestCase):
 
-aws dynamodb scan --table-name <table-name> --region <region> --output json | aws s3 cp - s3://<bucket-name>/<file-name>.json
+    # Definir um método que começa com test_
+    def test_soma(self):
+        # Usar self.assertEqual para verificar se a soma de dois números é igual ao esperado
+        self.assertEqual(2 + 3, 5)
 
-Substitua <table-name> pelo nome da tabela do DynamoDB que você deseja exportar, <region> pela região em que a tabela está localizada, <bucket-name> pelo nome do bucket S3 para onde você deseja exportar os dados e <file-name> pelo nome do arquivo de saída. Certifique-se de ter as permissões necessárias para acessar a tabela do DynamoDB e o bucket S3.
+    # Definir outro método que começa com test_
+    def test_subtracao(self):
+        # Usar self.assertEqual para verificar se a subtração de dois números é igual ao esperado
+        self.assertEqual(5 - 3, 2)
 
-Espero que isso ajude! Se você tiver alguma dúvida ou precisar de mais ajuda, é só falar.
+# Executar os testes se o arquivo for executado como um script
+if __name__ == "__main__":
+    unittest.main()
