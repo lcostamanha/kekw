@@ -1,89 +1,54 @@
 import json
-import traceback
 import boto3
-
-def get_data(table_name, client):
-    """
-    Get data from DyanamoDB
-    """
-    results = []
-    last_evaluated_key = None
-    while True:
-        if last_evaluated_key:
-            response = client.scan(
-                TableName=table_name,
-                ExclusiveStartKey=last_evaluated_key
-            )
-        else: 
-            response = client.scan(TableName=table_name)
-        last_evaluated_key = response.get('LastEvaluatedKey')
-        
-        results.extend(response['Items'])
-        
-        if not last_evaluated_key:
-            break
-    return results
+import datetime
 
 def lambda_handler(event, context):
-    """
-    Export Dynamodb to s3 (JSON)
-    """
-
-    statusCode = 200
-    statusMessage = 'Success'
-
-    try:
-        # parse the payload
-        tableName = event['tableName']
-        s3_bucket = event['s3_bucket']
-        s3_object = event['s3_object']
-        filename = event['filename']
-
-        # scan the dynamodb
-        dynamodb = boto3.resource('dynamodb')
-        table = dynamodb.Table(tableName)
+    # Define o nome da tabela do DynamoDB
+    table_name = 'nome_da_tabela'
+    
+    # Define o nome do bucket S3
+    s3_bucket_name = 'nome_do_bucket_s3'
+    
+    # Define o nome do arquivo que será salvo no bucket S3
+    s3_key = 'pasta/nome_do_arquivo.json'
+    
+    # Cria uma conexão com o DynamoDB
+    dynamodb = boto3.resource('dynamodb')
+    
+    # Obtém a tabela do DynamoDB
+    table = dynamodb.Table(table_name)
+    
+    # Obtém todos os itens da tabela
+    response = table.scan()
+    
+    # Salva os itens no arquivo JSON
+    items = response['Items']
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response['Items'])
         
-        client = boto3.client('dynamodb')
-        data = get_data(tableName, client)
-            
-        # export JSON to s3 bucket
-        s3 = boto3.resource('s3')
-        s3.Object(s3_bucket, s3_object + filename).put(Body=json.dumps(data))
-
-    except Exception as e:
-            statusCode = 400
-            statusMessage = traceback.format_exc()
-
+    # Converte os itens para JSON
+    items_json = json.dumps(items, default=str)
+    
+    # Salva o arquivo JSON no bucket S3
+    s3 = boto3.resource('s3')
+    s3_object = s3.Object(s3_bucket_name, s3_key)
+    s3_object.put(Body=items_json)
+    
+    # Retorna a mensagem de sucesso
     return {
-        "statusCode": statusCode,
-        "status": statusMessage
+        'statusCode': 200,
+        'body': 'Exportação para o S3 realizada com sucesso!'
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    {
-   "TableName": "DynamoDB_Table_name",
-   "s3_bucket": "s3_bucket_name",
-   "s3_object": "s3_object_name",
-   "filename": "output.json"
-}
+
+        
+        
+        
+        
+        
+Lembre-se de configurar as permissões necessárias no IAM Role do Lambda para acessar a tabela 
+do DynamoDB e o bucket do S3. Além disso, 
+substitua os valores 
+nome_da_tabela, 
+nome_do_bucket_s3, 
+pasta/nome_do_arquivo.json pelos valores correspondentes da sua aplicação.
