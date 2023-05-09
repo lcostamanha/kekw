@@ -29,70 +29,40 @@ resource "aws_autoscaling_group" "example" {
 
 
 ############################################################################################################
-# Importar os módulos necessários
-import unittest
+
+lammmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+
+
+
 import boto3
 import json
-from moto import mock_dynamodb2, mock_s3
-from lambda_function import lambda_handler
+import os
+import pandas as pd
 
-# Definir uma classe que herda de unittest.TestCase
-class TestLambda(unittest.TestCase):
+TABLE_NAME = os.environ.get("DDB_TABLE_NAME")
+OUTPUT_BUCKET = os.environ.get("BUCKET_NAME")
+TEMP_FILENAME = '/tmp/export.csv'
+OUTPUT_KEY = 'export.csv'
 
-    # Definir um método setUp que é executado antes de cada teste
-    def setUp(self):
-        # Criar um mock do DynamoDB e do S3
-        self.mock_dynamodb = mock_dynamodb2()
-        self.mock_s3 = mock_s3()
-        self.mock_dynamodb.start()
-        self.mock_s3.start()
+s3_resource = boto3.resource('s3')
+dynamodb_resource = boto3.resource('dynamodb')
+table = dynamodb_resource.Table(TABLE_NAME)
 
-        # Criar uma tabela no DynamoDB com os mesmos atributos da tabela real
-        self.dynamodb = boto3.resource('dynamodb')
-        self.table = self.dynamodb.create_table(
-            TableName='tbes2004_web_rgto_crdl',
-            KeySchema=[
-                {
-                    'AttributeName': 'id',
-                    'KeyType': 'HASH'
-                }
-            ],
-            AttributeDefinitions=[
-                {
-                    'AttributeName': 'id',
-                    'AttributeType': 'S'
-                }
-            ]
-        )
 
-        # Inserir alguns dados na tabela
-        self.table.put_item(Item={'id': '1', 'nome': 'João', 'idade': 25})
-        self.table.put_item(Item={'id': '2', 'nome': 'Maria', 'idade': 30})
+def lambda_handler(event, context):
+    response = table.scan()
+    df = pd.DataFrame(response['Items'])
+    df.to_csv(TEMP_FILENAME, index=False, header=True)
 
-        # Criar um bucket no S3 com o mesmo nome do bucket real
-        self.s3 = boto3.client('s3')
-        self.s3.create_bucket(Bucket='teste-fido')
+    # Upload temp file to S3
+    s3_resource.Bucket(OUTPUT_BUCKET).upload_file(TEMP_FILENAME, OUTPUT_KEY)
 
-    # Definir um método tearDown que é executado depois de cada teste
-    def tearDown(self):
-        # Parar o mock do DynamoDB e do S3
-        self.mock_dynamodb.stop()
-        self.mock_s3.stop()
-
-    # Definir um método que começa com test_
-    def test_lambda_handler(self):
-        # Chamar a função lambda com um evento e um contexto vazios
-        result = lambda_handler({}, {})
-
-        # Verificar se o resultado tem o status code 200 e a mensagem esperada
-        self.assertEqual(result['statusCode'], 200)
-        self.assertEqual(result['body'], json.dumps('Dados salvos com sucesso no S3!'))
-
-        # Verificar se os dados foram salvos no S3 corretamente
-        response = self.s3.get_object(Bucket='teste-fido', Key='tbes2004_web_rgto_crdl')
-        data = json.loads(response['Body'].read())
-        self.assertEqual(data, [{'id': '1', 'nome': 'João', 'idade': 25}, {'id': '2', 'nome': 'Maria', 'idade': 30}])
-
-# Executar os testes se o arquivo for executado como um script
-if __name__ == "__main__":
-    unittest.main()
+    return {
+        'statusCode': 200,
+        'headers': {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": True,
+            "content-type": "application/json"
+        },
+        'body': json.dumps('OK')
+    }
