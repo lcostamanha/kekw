@@ -32,37 +32,51 @@ resource "aws_autoscaling_group" "example" {
 
 lammmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
 
-
-
-import boto3
 import json
-import os
-import pandas as pd
-
-TABLE_NAME = os.environ.get("DDB_TABLE_NAME")
-OUTPUT_BUCKET = os.environ.get("BUCKET_NAME")
-TEMP_FILENAME = '/tmp/export.csv'
-OUTPUT_KEY = 'export.csv'
-
-s3_resource = boto3.resource('s3')
-dynamodb_resource = boto3.resource('dynamodb')
-table = dynamodb_resource.Table(TABLE_NAME)
-
+import traceback
+import boto3
 
 def lambda_handler(event, context):
-    response = table.scan()
-    df = pd.DataFrame(response['Items'])
-    df.to_csv(TEMP_FILENAME, index=False, header=True)
+    """
+    Export Dynamodb to s3 (JSON)
+    """
 
-    # Upload temp file to S3
-    s3_resource.Bucket(OUTPUT_BUCKET).upload_file(TEMP_FILENAME, OUTPUT_KEY)
+    statusCode = 200
+    statusMessage = 'Success'
 
-    return {
-        'statusCode': 200,
-        'headers': {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": True,
-            "content-type": "application/json"
-        },
-        'body': json.dumps('OK')
-    }
+    try:
+        # parse the payload
+        tableName = event['tableName']
+        s3_bucket = event['s3_bucket']
+        s3_object = event['s3_object']
+        filename = event['filename']
+
+        # scan the dynamodb
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table(tableName)
+
+        response = table.scan()
+        data = response['Items']
+
+        # maximum data set limit is 1MB
+        # so we need to have this additional step
+        while 'LastEvaluatedKey' in response:
+            response = dynamodb.scan(
+                TableName=tableName,
+                Select='ALL_ATTRIBUTES',
+                ExclusiveStartKey=response['LastEvaluatedKey'])
+
+            data.extend(response['Items'])
+            
+        # export JSON to s3 bucket
+        s3 = boto3.resource('s3')
+        s3.Object(s3_object, s3_object + filename).put(Body=json.dumps(data))
+
+        except Exception as e:
+            statusCode = 400
+            statusMessage =  traceback.format_exc()
+
+        return {
+            "statusCode": statusCode,
+            "status": statusMessage
+        }
