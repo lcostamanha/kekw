@@ -1,60 +1,46 @@
-{
-   "TableName": "DynamoDB_Table_name",
-   "s3_bucket": "s3_bucket_name",
-   "s3_object": "s3_object_name",
-   "filename": "output.json"
-}
-
-
-############################################################################################################
-
-lammmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
-
-import json
-import traceback
 import boto3
+import csv
 
-def lambda_handler(event, context):
-    """
-    Export Dynamodb to s3 (JSON)
-    """
+# Crie um cliente para acessar o dynamodb
+dynamodb = boto3.client('dynamodb')
 
-    statusCode = 200
-    statusMessage = 'Success'
+# Defina o nome da tabela que você quer exportar
+table_name = 'sua_tabela'
 
-    try:
-        # parse the payload
-        tableName = event['tableName']
-        s3_bucket = event['s3_bucket']
-        s3_object = event['s3_object']
-        filename = event['filename']
+# Defina o nome do arquivo csv que você quer salvar no s3
+csv_file_name = 'seu_arquivo.csv'
 
-        # scan the dynamodb
-        dynamodb = boto3.resource('dynamodb')
-        table = dynamodb.Table(tableName)
+# Defina o nome do bucket s3 onde você quer salvar o arquivo csv
+s3_bucket_name = 'seu_bucket'
 
-        response = table.scan()
-        data = response['Items']
+# Crie um objeto para escrever no arquivo csv
+csv_file = open(csv_file_name, 'w')
+csv_writer = csv.writer(csv_file)
 
-        # maximum data set limit is 1MB
-        # so we need to have this additional step
-        while 'LastEvaluatedKey' in response:
-            response = dynamodb.scan(
-                TableName=tableName,
-                Select='ALL_ATTRIBUTES',
-                ExclusiveStartKey=response['LastEvaluatedKey'])
+# Faça uma consulta no dynamodb para obter todos os itens da tabela
+response = dynamodb.scan(TableName=table_name)
 
-            data.extend(response['Items'])
-            
-        # export JSON to s3 bucket
-        s3 = boto3.resource('s3')
-        s3.Object(s3_object, s3_object + filename).put(Body=json.dumps(data))
+# Escreva os nomes das colunas no arquivo csv
+columns = response['Items'][0].keys()
+csv_writer.writerow(columns)
 
-        except Exception as e:
-            statusCode = 400
-            statusMessage =  traceback.format_exc()
+# Escreva os valores de cada item no arquivo csv
+for item in response['Items']:
+    values = [item[col]['S'] for col in columns]
+    csv_writer.writerow(values)
 
-        return {
-            "statusCode": statusCode,
-            "status": statusMessage
-        }
+# Feche o arquivo csv
+csv_file.close()
+
+# Crie um cliente para acessar o s3
+s3 = boto3.client('s3')
+
+# Faça o upload do arquivo csv para o bucket s3
+s3.upload_file(csv_file_name, s3_bucket_name, csv_file_name)
+
+
+
+
+
+
+
