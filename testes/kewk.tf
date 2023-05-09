@@ -52,3 +52,15 @@ substitua os valores
 nome_da_tabela, 
 nome_do_bucket_s3, 
 pasta/nome_do_arquivo.json pelos valores correspondentes da sua aplicação.
+
+            
+        
+        
+        
+        
+        {
+  "tableName": "nome_da_tabela",
+  "s3_bucket": "nome_do_bucket",
+  "s3_object": "nome_do_objeto/",
+  "filename": "nome_do_arquivo.json"
+}
