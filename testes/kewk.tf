@@ -39,7 +39,29 @@ s3 = boto3.client('s3')
 s3.upload_file(csv_file_name, s3_bucket_name, csv_file_name)
 
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+{
+  "Records": [
+    {
+      "EventSource": "aws:s3",
+      "EventVersion": "2.1",
+      "S3": {
+        "bucket": {
+          "name": "seu_bucket"
+        },
+        "object": {
+          "key": "seu_arquivo.csv"
+        }
+      }
+    }
+  ]
+}
+
+        
+Esse evento simula a criação de um novo objeto no bucket seu_bucket com o nome seu_arquivo.csv. 
+Quando esse evento é disparado, ele aciona a execução do lambda que lê a tabela sua_tabela do DynamoDB, 
+escreve seus dados em um arquivo CSV e o carrega no bucket S3 seu_bucket com o nome seu_arquivo.csv.
 
 
 
