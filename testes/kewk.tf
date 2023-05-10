@@ -77,22 +77,17 @@ def lambda_handler(event, context):
     
     
     
-    {
+    
+    
+    
+{
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "DynamoDBAccess",
             "Effect": "Allow",
-            "Action": [
-                "dynamodb:Scan"
-            ],
-            "Resource": [
-                "arn:aws:dynamodb:região:ID-da-conta:dynamodb:Tabela"
-            ]
-        },
-        {
-            "Sid": "S3Access",
-            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::ID-da-conta-do-Lambda:role/NomeDaFuncaoDoLambda"
+            },
             "Action": [
                 "s3:PutObject"
             ],
@@ -102,4 +97,5 @@ def lambda_handler(event, context):
         }
     ]
 }
+
 
