@@ -88,7 +88,8 @@ def lambda_handler(event, context):
                 "AWS": "arn:aws:iam::ID-da-conta-do-Lambda:role/NomeDaFuncaoDoLambda"
             },
             "Action": [
-                "s3:PutObject"
+                "s3:PutObject",
+                "s3:PutObjectAcl"
             ],
             "Resource": [
                 "arn:aws:s3:::NomeDoBucket/*"
