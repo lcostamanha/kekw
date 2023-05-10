@@ -1,54 +1,82 @@
-provider "aws" {
-  region = "us-east-1"  # Substitua pela região desejada
-}
+import boto3
+import csv
+import io
 
-resource "aws_s3_bucket" "example_bucket" {
-  bucket = "meu-bucket-s3"  # Substitua pelo nome desejado para o bucket
-  acl    = "private"
+def lambda_handler(event, context):
+    # Nome da tabela do DynamoDB
+    dynamodb_table_name = 'NomeDaTabela'
 
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/meu-lambda-function-role"
-      },
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::meu-bucket-s3/*"
-    }
-  ]
-}
-EOF
-}
+    # Nome do bucket do S3 para salvar o arquivo CSV
+    s3_bucket_name = 'NomeDoBucket'
 
-data "aws_caller_identity" "current" {}
+    # Nome do arquivo CSV a ser gerado
+    csv_file_name = 'dados.csv'
 
-resource "aws_lambda_function" "example_lambda" {
-  function_name = "meu-lambda-function"  # Substitua pelo nome desejado para a função do Lambda
-  handler       = "index.handler"
-  runtime       = "nodejs14.x"
-  role          = aws_iam_role.example_role.arn
-  filename      = "example_lambda.zip"
-  source_code_hash = filebase64sha256("example_lambda.zip")
-}
+    # Inicializa o cliente do DynamoDB
+    dynamodb = boto3.client('dynamodb')
 
-resource "aws_iam_role" "example_role" {
-  name = "meu-lambda-function-role"  # Substitua pelo nome desejado para a função do IAM
+    # Realiza uma scan na tabela para obter todos os itens
+    response = dynamodb.scan(TableName=dynamodb_table_name)
 
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
+    # Obtém os itens retornados
+    items = response['Items']
+
+    # Caso a tabela possua mais itens, é necessário realizar paginacao
+    while 'LastEvaluatedKey' in response:
+        response = dynamodb.scan(TableName=dynamodb_table_name,
+                                 ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response['Items'])
+
+    # Verifica se a tabela possui itens
+    if not items:
+        print("A tabela está vazia.")
+        return
+
+    # Gera o arquivo CSV em memória
+    csv_buffer = io.StringIO()
+    csv_writer = csv.writer(csv_buffer)
+
+    # Escreve os cabeçalhos das colunas
+    csv_writer.writerow(items[0].keys())
+
+    # Escreve os dados dos itens no arquivo CSV
+    for item in items:
+        csv_writer.writerow(item.values())
+
+    # Inicializa o cliente do S3
+    s3 = boto3.client('s3')
+
+    # Define o nome do arquivo no S3
+    s3_object_key = csv_file_name
+
+    # Salva o arquivo CSV no S3
+    s3.put_object(Body=csv_buffer.getvalue(),
+                  Bucket=s3_bucket_name,
+                  Key=s3_object_key)
+
+    print(f"O arquivo CSV '{csv_file_name}' foi salvo no bucket '{s3_bucket_name}' com sucesso.")
+
+      
+      
+      
+      
+      
+Certifique-se de substituir 'NomeDaTabela' pelo nome da sua tabela no DynamoDB, 'NomeDoBucket' pelo nome do seu bucket no S3 e 'dados.csv' pelo nome desejado para o arquivo CSV.
+
+Além disso, lembre-se de configurar as permissões corretas para o Lambda acessar o DynamoDB e o S3. Você pode criar uma função do Lambda com as seguintes permissões:
+
+DynamoDB: dynamodb:Scan (para ler dados da tabela)
+S3: s3:PutObject (para salvar o arquivo CSV no S3)
+Após criar a função Lambda e configurar as permissões, você pode invocá-la para gerar o arquivo CSV no S3 com os dados da tabela do DynamoDB.
+        
+      
+      
+      
+      
+      
+      
+      
+      {
+  "key1": "value1",
+  "key2": "value2"
 }
