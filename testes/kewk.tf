@@ -1,66 +1,76 @@
-import json
 import boto3
-import datetime
+import json
 
 def lambda_handler(event, context):
-    # Define o nome da tabela do DynamoDB
-    table_name = 'nome_da_tabela'
+    # Configurar o cliente do DynamoDB
+    dynamodb = boto3.client('dynamodb')
     
-    # Define o nome do bucket S3
-    s3_bucket_name = 'nome_do_bucket_s3'
+    # Configurar o cliente do S3
+    s3 = boto3.client('s3')
     
-    # Define o nome do arquivo que será salvo no bucket S3
-    s3_key = 'pasta/nome_do_arquivo.json'
+    # Nome da tabela do DynamoDB
+    table_name = 'NomeDaTabela'
     
-    # Cria uma conexão com o DynamoDB
-    dynamodb = boto3.resource('dynamodb')
-    
-    # Obtém a tabela do DynamoDB
-    table = dynamodb.Table(table_name)
-    
-    # Obtém todos os itens da tabela
-    response = table.scan()
-    
-    # Salva os itens no arquivo JSON
-    items = response['Items']
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response['Items'])
+    try:
+        # Obter todos os itens da tabela do DynamoDB
+        response = dynamodb.scan(TableName=table_name)
+        items = response['Items']
         
-    # Converte os itens para JSON
-    items_json = json.dumps(items, default=str)
-    
-    # Salva o arquivo JSON no bucket S3
-    s3 = boto3.resource('s3')
-    s3_object = s3.Object(s3_bucket_name, s3_key)
-    s3_object.put(Body=items_json)
-    
-    # Retorna a mensagem de sucesso
-    return {
-        'statusCode': 200,
-        'body': 'Exportação para o S3 realizada com sucesso!'
-    }
+        # Converter os itens para o formato JSON
+        json_data = json.dumps(items)
+        
+        # Nome do bucket do S3
+        bucket_name = 'NomeDoBucket'
+        
+        # Nome do arquivo a ser salvo no S3
+        file_name = 'dados.json'
+        
+        # Gravar os dados no S3
+        s3.put_object(Body=json_data, Bucket=bucket_name, Key=file_name)
+        
+        return {
+            'statusCode': 200,
+            'body': 'Dados salvos com sucesso no S3.'
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': str(e)
+        }
 
-        
-        
-        
-        
-        
-Lembre-se de configurar as permissões necessárias no IAM Role do Lambda para acessar a tabela 
-do DynamoDB e o bucket do S3. Além disso, 
-substitua os valores 
-nome_da_tabela, 
-nome_do_bucket_s3, 
-pasta/nome_do_arquivo.json pelos valores correspondentes da sua aplicação.
+    
+    
+    
+   {
+  "key": "value"
+}
 
-            
-        
-        
-        
-        
+    
+    
+    
+    
+{
+    "Version": "2012-10-17",
+    "Statement": [
         {
-  "tableName": "nome_da_tabela",
-  "s3_bucket": "nome_do_bucket",
-  "s3_object": "nome_do_objeto/",
-  "filename": "nome_do_arquivo.json"
+            "Sid": "DynamoDBAccess",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:Scan"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:região:ID-da-conta:dynamodb:Tabela"
+            ]
+        },
+        {
+            "Sid": "S3Access",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::NomeDoBucket/*"
+            ]
+        }
+    ]
 }
