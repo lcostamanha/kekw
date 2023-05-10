@@ -2,26 +2,18 @@
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "DynamoDBAccess",
+            "Sid": "AllowLambdaToWrite",
             "Effect": "Allow",
+            "Principal": {
+                "Service": "lambda.amazonaws.com"
+            },
             "Action": [
-                "dynamodb:GetItem",
-                "dynamodb:PutItem",
-                "dynamodb:DeleteItem",
-                "dynamodb:Scan",
-                "dynamodb:Query"
-            ],
-            "Resource": "arn:aws:dynamodb:*:*:table/*"
-        },
-        {
-            "Sid": "S3Access",
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
                 "s3:PutObject",
-                "s3:DeleteObject"
+                "s3:PutObjectAcl"
             ],
-            "Resource": "arn:aws:s3:::*"
+            "Resource": [
+                "arn:aws:s3:::NOME_DO_BUCKET/*"
+            ]
         }
     ]
 }
