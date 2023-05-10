@@ -79,7 +79,6 @@ def lambda_handler(event, context):
     
     
     
-    
 {
     "Version": "2012-10-17",
     "Statement": [
