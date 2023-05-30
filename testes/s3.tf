@@ -1,13 +1,61 @@
-# Crie o recurso do EventBridge
-resource "aws_cloudwatch_event_rule" "daily_lambda_trigger" {
-  name        = "daily_lambda_trigger"
-  description = "Chama a função Lambda todos os dias às 05:00 da manhã"
+##################### bucket os-prod-application-artifacts #####################
 
-  schedule_expression = "cron(0 5 * * ? *)"  # Define a expressão cron para 05:00 AM
-
-  # Defina os detalhes da ação a ser tomada
-  target {
-    arn  = aws_lambda_function.my_lambda.arn  # ARN da função Lambda
-    role_arn = aws_iam_role.lambda_role.arn   # ARN da função IAM do Lambda com permissões necessárias
+resource "aws_s3_bucket" "os-prod-application-artifacts" {
+  bucket = "os-prod-application-artifacts"
+  acl = "private"
+  versioning {
+    enabled = false
   }
+
+  tags = {
+    Name = "os-prod-application-artifacts"
+  }
+
+}
+
+resource "aws_s3_bucket_public_access_block" "public_access_block-3" {
+  bucket = aws_s3_bucket.os-prod-application-artifacts.id
+
+  # Block new public ACLs and uploading public objects
+  block_public_acls = true
+
+  # Retroactively remove public access granted through public ACLs
+  ignore_public_acls = true
+
+  # Block new public bucket policies
+  block_public_policy = true
+
+  # Retroactivley block public and cross-account access if bucket has public policies
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_policy" "os-prod-application-artifacts" {
+  bucket = aws_s3_bucket.os-prod-application-artifacts.id
+
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DelegateS3Access",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::166607387349:role/role-infraestrutura",
+                    "arn:aws:iam::166607387349:role/terraform-os-dev-jenkins"
+                ]
+            },
+            "Action": [
+                "s3:ListBucket",
+                "s3:PutObject",
+                "s3:PutObjectAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::os-prod-application-artifacts/*",
+                "arn:aws:s3:::os-prod-application-artifacts"
+            ]
+        }
+    ]
+}
+POLICY
 }
