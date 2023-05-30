@@ -2,39 +2,23 @@ provider "aws" {
   region = "us-east-1"  # Substitua pela região desejada
 }
 
-resource "aws_s3_bucket" "example" {
-  bucket = "meu-bucket-s3"
-  acl    = "private"
-}
+resource "aws_security_group" "example" {
+  name        = "meu-security-group"
+  description = "Security Group com saída liberada para HTTPS"
 
-resource "aws_lambda_function" "example" {
-  function_name = "meu-lambda-function"
-  # Configurações do Lambda
-
-  # ...
-
-  # Adicione a permissão do Lambda para acessar o bucket S3
-  provisioned_concurrency_config {
-    function_name    = aws_lambda_function.example.function_name
-    provisioned_concurrent_executions = 1
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Permite todo tráfego de saída"
   }
-}
 
-data "aws_iam_policy_document" "s3_policy" {
-  statement {
-    sid       = "AllowLambdaAccess"
-    effect    = "Allow"
-    actions   = ["s3:GetObject", "s3:PutObject"]
-    resources = ["arn:aws:s3:::meu-bucket-s3/*"]
-
-    principals {
-      type        = "AWS"
-      identifiers = [aws_lambda_function.example.arn]
-    }
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Permite tráfego de saída na porta HTTPS (443)"
   }
-}
-
-resource "aws_s3_bucket_policy" "example" {
-  bucket = aws_s3_bucket.example.id
-  policy = data.aws_iam_policy_document.s3_policy.json
 }
