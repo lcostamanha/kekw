@@ -1,11 +1,1 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: meu-servico
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 8000
-    targetPort: 8000
-  selector:
-    app: meu-aplicativo
+sum(rate(http_requests_total{status="success"}[5m])) by (container_name)
