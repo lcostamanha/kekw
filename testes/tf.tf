@@ -1,1 +1,1 @@
-sum(rate(http_requests_total{status="success"}[5m])) by (container_name)
+sum by (status)(http_requests_total{container_name="container-customeriam-webauthnservice"})
