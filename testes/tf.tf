@@ -11,3 +11,6 @@ sum by (status_code) (
 ) / ignoring(status_code) group_left sum by (1) (
   http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}
 ) * 100
+
+
+sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) * 100 / sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}[5m]))
