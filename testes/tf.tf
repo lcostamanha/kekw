@@ -14,3 +14,14 @@ sum by (status_code) (
 
 
 sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) * 100 / sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}[5m]))
+
+---
+
+sus
+
+sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) * 100 / sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}[5m]))
+
+
+error
+
+100 - (sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) * 100 / sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}[5m])))
