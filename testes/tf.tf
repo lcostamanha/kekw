@@ -4,3 +4,10 @@ sum by (status_code) (http_server_requests_seconds_count{task_group="service:ser
 
 
 sum(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"})
+
+
+sum by (status_code) (
+  http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}
+) / ignoring(status_code) group_left sum by (1) (
+  http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}
+) * 100
