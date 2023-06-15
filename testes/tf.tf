@@ -1,13 +1,10 @@
-coalesce(sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) * 100 / sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}[5m])), 0)
+http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}
 
 
-if(sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) > 0, sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) * 100 / sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}[5m])), 0)
+sus:
+http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}
 
-sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) * 100 / (sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice"}[5m])) + unless(sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])) > 0, sum(irate(http_server_requests_seconds_count{task_group="service:service-customeriam-webauthnservice", status_code=~"2.*"}[5m])), 0))
+erro:
+sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", status_code!~"2.*"}[5m])) / sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}[5m])) * 100
 
 
-fields @timestamp, campo_nulo
-| filter campo_nulo = "null"
-| stats count(*) by campo_nulo
-| fields - campo_nulo
-| fields @timestamp, campo_nulo="0"
