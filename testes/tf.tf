@@ -14,7 +14,7 @@ histogram_quantile(0.95, sum(rate(preregister_histogram_bucket{task_name="family
 
 -----------------------
 
-sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}[5m]))
+sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}[5m]))
 
 
-sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}[1m])) by (uri)
+sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}[1m])) by (uri)
