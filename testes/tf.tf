@@ -6,3 +6,6 @@ sum by (status)(rate(http_server_requests_seconds_count{task_name="family-custom
 
 
 histogram_quantile(0.95, sum(rate(preregister_histogram_bucket{task_name="family-customeriam-webauthnservice-newvpc", uri="/api/v1/preregister"}[5m])) by (le))
+
+
+histogram_quantile(0.95, sum(rate(preregister_histogram_bucket{task_name="family-customeriam-webauthnservice-newvpc", uri!~"/actuator/prometheus|/"}[5m])) by (le))
