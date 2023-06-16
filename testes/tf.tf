@@ -23,3 +23,10 @@ sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webaut
 
 
 sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}[1m]))
+
+++========================================================
+
+sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"})
+
+
+sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}[1m])) * 60
