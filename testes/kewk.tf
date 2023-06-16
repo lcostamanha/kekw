@@ -5,3 +5,7 @@ histogram_quantile(0.90, sum(rate(preregister_histogram_bucket{task_name="family
 
 
 histogram_quantile(0.50, sum(rate(preregister_histogram_bucket{task_name="family-customeriam-webauthnservice-newvpc", uri!~"/actuator/prometheus"}[5m])) by (le))
+
+-----------------------------------
+
+avg(http_request_duration_seconds{task_name="family-customeriam-webauthnservice-newvpc", uri!~"/actuator/prometheus"})
