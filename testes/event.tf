@@ -1,3 +1,1 @@
-ceil(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}[1m]) * 60)
-
-floor(sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}[1m])) * 60)
+sum(http_server_requests_success_count{task_name="family-customeriam-webauthnservice-newvpc", status=~"2[0-9]{2}"}) / sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}) * 100
