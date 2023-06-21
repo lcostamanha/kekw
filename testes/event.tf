@@ -13,3 +13,5 @@ sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnser
 
 
 increase(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}[<range>])
+
+sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}[$__interval])
