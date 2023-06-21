@@ -21,3 +21,7 @@ avg(http_server_requests_seconds_sum{task_name="family-customeriam-webauthnservi
 por min
 
 sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri="/api/v1/preauthenticate", status!~"2[0-9]{2}"}[1m]))
+
+p95 
+
+histogram_quantile(0.95, sum by (le) (preauthenticate_histogram_bucket{task_name="family-customeriam-webauthnservice-newvpc"}))
