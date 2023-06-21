@@ -25,3 +25,11 @@ sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webaut
 p95 
 
 histogram_quantile(0.95, sum by (le) (preauthenticate_histogram_bucket{task_name="family-customeriam-webauthnservice-newvpc"}))
+
+
+p90
+histogram_quantile(0.9, sum by (le) (preauthenticate_histogram_bucket{task_name="family-customeriam-webauthnservice-newvpc"}))
+
+p50 
+
+histogram_quantile(0.5, sum by (le) (preauthenticate_histogram_bucket{task_name="family-customeriam-webauthnservice-newvpc"}))
