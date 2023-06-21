@@ -22,3 +22,6 @@ sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnser
 
 
 sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", status=~"4..", uri="/api/v1/authenticate"}) / sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}) * 100
+
+
+sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", status=~"4..|5..", status!="404", uri="/api/v1/authenticate"}) / sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}) * 100
