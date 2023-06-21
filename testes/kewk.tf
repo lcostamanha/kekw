@@ -15,3 +15,7 @@ rate(http_server_requests_seconds_count{container_name="container-customeriam-we
 ---
 
 sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", status!="2", uri="/api/v1/authenticate"}[1m]))
+
+%
+
+sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", status=~"5.."}) / sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc"}) * 100
