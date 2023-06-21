@@ -4,3 +4,6 @@ sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-webaut
 
 
 sum(http_server_requests_seconds_count{container_name="container-customeriam-webauthnservice"} unless(status=~"2..|3.."))
+
+
+sum(http_server_requests_seconds_count{container_name="container-customeriam-webauthnservice", status!~"2..|3.."})
