@@ -10,3 +10,6 @@ floor(sum(rate(http_server_requests_seconds_count{task_name="family-customeriam-
 
 
 (sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus", status=~"4..|5.."})) / sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}) * 100
+
+
+clamp_max(round((sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus", status=~"4..|5.."})) / sum(http_server_requests_seconds_count{task_name="family-customeriam-webauthnservice-newvpc", uri!="/actuator/prometheus"}) * 100), 100)
