@@ -2,9 +2,6 @@ import boto3
 import json
 import datetime
 import os
-import gzip
-import tempfile
-import math
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -35,6 +32,10 @@ def lambda_handler(event, context):
         # Contador para controlar o número de arquivos criados
         file_counter = 1
         
+        # Criação do arquivo inicial
+        file_name = f'{current_date}/fido-export-{file_counter}.json'
+        file_contents = []
+        
         # Loop para obter todas as páginas de resultados
         while True:
             # Configuração da paginação com a chave de paginação
@@ -59,33 +60,25 @@ def lambda_handler(event, context):
                 
                 # Verifica se o item cabe no arquivo atual
                 if current_file_size + item_size > max_file_size:
-                    # Fecha o arquivo atual (se houver)
-                    if current_file_size > 0:
-                        gz_file.close()
-                        s3.upload_file(temp_file.name, bucket_name, f'{current_date}/fido-export-{file_counter}.json.gz')
-                        file_counter += 1
+                    # Salva o arquivo atual no S3
+                    s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=file_name)
                     
-                    # Cria um novo arquivo temporário
-                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                        with gzip.open(temp_file.name, 'wt', encoding='utf-8') as gz_file:
-                            gz_file.write(item_json)
-                            gz_file.write('\n')
-                            current_file_size = item_size
+                    # Incrementa o contador e cria um novo arquivo
+                    file_counter += 1
+                    file_name = f'{current_date}/fido-export-{file_counter}.json'
+                    file_contents = []
+                    current_file_size = 0
                 
-                else:
-                    # Escreve o item no arquivo atual
-                    gz_file.write(item_json)
-                    gz_file.write('\n')
-                    current_file_size += item_size
+                # Adiciona o item ao arquivo atual
+                file_contents.append(item)
+                current_file_size += item_size
             
             # Sai do loop se não houver mais páginas
             if not last_evaluated_key:
                 break
         
-        # Fecha o arquivo atual (se houver)
-        if current_file_size > 0:
-            gz_file.close()
-            s3.upload_file(temp_file.name, bucket_name, f'{current_date}/fido-export-{file_counter}.json.gz')
+        # Salva o último arquivo no S3
+        s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=file_name)
         
         return {
             'statusCode': 200,
