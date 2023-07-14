@@ -23,8 +23,8 @@ def lambda_handler(event, context):
         # Inicializa a chave de paginação
         last_evaluated_key = None
         
-        # Tamanho máximo do arquivo em bytes (260 MB)
-        max_file_size = 260 * 1024 * 1024
+        # Tamanho máximo do arquivo em bytes (500 MB)
+        max_file_size = 500 * 1024 * 1024
         
         # Contador para controlar o tamanho atual do arquivo
         current_file_size = 0
@@ -33,6 +33,7 @@ def lambda_handler(event, context):
         file_counter = 1
         
         # Criação do arquivo inicial
+        folder_name = 'tb_fido'
         file_name = f'{current_date}/fido-export-{file_counter}.json'
         file_contents = []
         
@@ -61,7 +62,7 @@ def lambda_handler(event, context):
                 # Verifica se o item cabe no arquivo atual
                 if current_file_size + item_size > max_file_size:
                     # Salva o arquivo atual no S3
-                    s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=file_name)
+                    s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=f'{folder_name}/{file_name}')
                     
                     # Incrementa o contador e cria um novo arquivo
                     file_counter += 1
@@ -78,13 +79,13 @@ def lambda_handler(event, context):
                 break
         
         # Salva o último arquivo no S3
-        s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=file_name)
+        s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=f'{folder_name}/{file_name}')
         
         return {
             'statusCode': 200,
             'body': 'Dados salvos no S3 com sucesso.'
         }
-    
+        
     except Exception as e:
         return {
             'statusCode': 500,
