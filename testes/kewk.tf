@@ -2,6 +2,8 @@ import boto3
 import json
 import datetime
 import os
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -17,25 +19,29 @@ def lambda_handler(event, context):
     bucket_name = os.environ['BUCKET_NAME']
     
     # Obtendo a data atual
-    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    current_date = datetime.datetime.now()
+    year = current_date.strftime("%Y")
+    month = current_date.strftime("%m")
+    day = current_date.strftime("%d")
     
     try:
+        # Criação da pasta tb_fido
+        folder_name = 'tb_fido'
+        s3.put_object(Body='', Bucket=bucket_name, Key=f'{folder_name}/')
+        
+        # Criação da pasta do ano, mês e dia
+        year_folder = f'{folder_name}/{year}/'
+        s3.put_object(Body='', Bucket=bucket_name, Key=year_folder)
+        month_folder = f'{year_folder}{month}/'
+        s3.put_object(Body='', Bucket=bucket_name, Key=month_folder)
+        day_folder = f'{month_folder}{day}/'
+        s3.put_object(Body='', Bucket=bucket_name, Key=day_folder)
+        
         # Inicializa a chave de paginação
         last_evaluated_key = None
         
-        # Tamanho máximo do arquivo em bytes (500 MB)
-        max_file_size = 500 * 1024 * 1024
-        
-        # Contador para controlar o tamanho atual do arquivo
-        current_file_size = 0
-        
-        # Contador para controlar o número de arquivos criados
-        file_counter = 1
-        
-        # Criação do arquivo inicial
-        folder_name = 'tb_fido'
-        file_name = f'{current_date}.json'
-        file_contents = []
+        # Lista para armazenar os dados particionados
+        partitioned_data = {}
         
         # Loop para obter todas as páginas de resultados
         while True:
@@ -53,33 +59,32 @@ def lambda_handler(event, context):
             
             # Loop para processar cada item
             for item in items:
-                # Converte o item em uma string JSON
-                item_json = json.dumps(item)
+                # Obter os valores das colunas para particionar
+                year_value = item['year']
+                month_value = item['month']
+                day_value = item['day']
                 
-                # Calcula o tamanho do item em bytes
-                item_size = len(item_json.encode('utf-8'))
+                # Criação das chaves de partição
+                partition_key = f'year={year_value}/month={month_value}/day={day_value}'
                 
-                # Verifica se o item cabe no arquivo atual
-                if current_file_size + item_size > max_file_size:
-                    # Salva o arquivo atual no S3
-                    s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=f'{folder_name}/{file_name}')
-                    
-                    # Incrementa o contador e cria um novo arquivo
-                    file_counter += 1
-                    file_name = f'{current_date}-{file_counter}.json'
-                    file_contents = []
-                    current_file_size = 0
+                # Adicionar o item aos dados particionados
+                if partition_key not in partitioned_data:
+                    partitioned_data[partition_key] = []
                 
-                # Adiciona o item ao arquivo atual
-                file_contents.append(item)
-                current_file_size += item_size
+                partitioned_data[partition_key].append(item)
             
             # Sai do loop se não houver mais páginas
             if not last_evaluated_key:
                 break
         
-        # Salva o último arquivo no S3
-        s3.put_object(Body=json.dumps(file_contents), Bucket=bucket_name, Key=f'{folder_name}/{file_name}')
+        # Loop para salvar cada partição em formato Parquet
+        for partition_key, partition_data in partitioned_data.items():
+            # Converte a lista de itens para uma tabela do PyArrow
+            table = pa.Table.from_pandas(pd.DataFrame(partition_data))
+            
+            # Salva a tabela em formato Parquet no S3
+            file_name = f'{folder_name}/{partition_key}/fido-export.parquet'
+            pq.write_table(table, f's3://{bucket_name}/{file_name}')
         
         return {
             'statusCode': 200,
