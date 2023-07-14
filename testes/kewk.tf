@@ -34,7 +34,7 @@ def lambda_handler(event, context):
         
         # Criação do arquivo inicial
         folder_name = 'tb_fido'
-        file_name = f'{current_date}/fido-export-{file_counter}.json'
+        file_name = f'{current_date}.json'
         file_contents = []
         
         # Loop para obter todas as páginas de resultados
@@ -66,7 +66,7 @@ def lambda_handler(event, context):
                     
                     # Incrementa o contador e cria um novo arquivo
                     file_counter += 1
-                    file_name = f'{current_date}/fido-export-{file_counter}.json'
+                    file_name = f'{current_date}-{file_counter}.json'
                     file_contents = []
                     current_file_size = 0
                 
