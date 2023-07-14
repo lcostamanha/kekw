@@ -4,6 +4,7 @@ import datetime
 import os
 import pandas as pd
 import pyarrow.parquet as pq
+import pyarrow as pa
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -55,7 +56,8 @@ def lambda_handler(event, context):
         
         # Salva o DataFrame em formato Parquet no S3
         file_name = f'tb_fido/fido-export-{current_date}.parquet'
-        pq.write_table(pa.Table.from_pandas(df), f's3://{bucket_name}/{file_name}')
+        table = pa.Table.from_pandas(df)
+        pq.write_table(table, f's3://{bucket_name}/{file_name}')
         
         return {
             'statusCode': 200,
