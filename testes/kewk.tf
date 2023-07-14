@@ -2,7 +2,7 @@ import boto3
 import json
 import datetime
 import os
-import pyarrow as pa
+import pandas as pd
 import pyarrow.parquet as pq
 
 def lambda_handler(event, context):
@@ -19,29 +19,14 @@ def lambda_handler(event, context):
     bucket_name = os.environ['BUCKET_NAME']
     
     # Obtendo a data atual
-    current_date = datetime.datetime.now()
-    year = current_date.strftime("%Y")
-    month = current_date.strftime("%m")
-    day = current_date.strftime("%d")
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
     
     try:
-        # Criação da pasta tb_fido
-        folder_name = 'tb_fido'
-        s3.put_object(Body='', Bucket=bucket_name, Key=f'{folder_name}/')
-        
-        # Criação da pasta do ano, mês e dia
-        year_folder = f'{folder_name}/{year}/'
-        s3.put_object(Body='', Bucket=bucket_name, Key=year_folder)
-        month_folder = f'{year_folder}{month}/'
-        s3.put_object(Body='', Bucket=bucket_name, Key=month_folder)
-        day_folder = f'{month_folder}{day}/'
-        s3.put_object(Body='', Bucket=bucket_name, Key=day_folder)
-        
         # Inicializa a chave de paginação
         last_evaluated_key = None
         
-        # Lista para armazenar os dados particionados
-        partitioned_data = {}
+        # Lista para armazenar os dados
+        data = []
         
         # Loop para obter todas as páginas de resultados
         while True:
@@ -59,32 +44,18 @@ def lambda_handler(event, context):
             
             # Loop para processar cada item
             for item in items:
-                # Obter os valores das colunas para particionar
-                year_value = item['year']
-                month_value = item['month']
-                day_value = item['day']
-                
-                # Criação das chaves de partição
-                partition_key = f'year={year_value}/month={month_value}/day={day_value}'
-                
-                # Adicionar o item aos dados particionados
-                if partition_key not in partitioned_data:
-                    partitioned_data[partition_key] = []
-                
-                partitioned_data[partition_key].append(item)
+                data.append(item)
             
             # Sai do loop se não houver mais páginas
             if not last_evaluated_key:
                 break
         
-        # Loop para salvar cada partição em formato Parquet
-        for partition_key, partition_data in partitioned_data.items():
-            # Converte a lista de itens para uma tabela do PyArrow
-            table = pa.Table.from_pandas(pd.DataFrame(partition_data))
-            
-            # Salva a tabela em formato Parquet no S3
-            file_name = f'{folder_name}/{partition_key}/fido-export.parquet'
-            pq.write_table(table, f's3://{bucket_name}/{file_name}')
+        # Converte a lista de itens em um DataFrame do pandas
+        df = pd.DataFrame(data)
+        
+        # Salva o DataFrame em formato Parquet no S3
+        file_name = f'tb_fido/fido-export-{current_date}.parquet'
+        pq.write_table(pa.Table.from_pandas(df), f's3://{bucket_name}/{file_name}')
         
         return {
             'statusCode': 200,
