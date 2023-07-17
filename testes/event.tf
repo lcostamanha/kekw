@@ -2,8 +2,7 @@ import boto3
 import json
 import datetime
 import os
-import pyarrow as pa
-import pyarrow.parquet as pq
+import utils
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -63,10 +62,7 @@ def lambda_handler(event, context):
             # Verifica se o arquivo atual excede o tamanho máximo
             if file_size > max_file_size:
                 # Salva o arquivo atual em formato Parquet
-                table = pa.Table.from_pandas(pd.DataFrame(file_contents))
-                with pa.OSFile(f'/tmp/{file_name}', 'wb') as f:
-                    pq.write_table(table, f)
-                s3.upload_file(f'/tmp/{file_name}', bucket_name, file_name)
+                utils.save_parquet_to_s3(file_contents, s3, bucket_name, file_name)
 
                 # Incrementa o contador e cria um novo arquivo
                 file_counter += 1
@@ -75,10 +71,7 @@ def lambda_handler(event, context):
 
         # Salva o último arquivo em formato Parquet
         if file_contents:
-            table = pa.Table.from_pandas(pd.DataFrame(file_contents))
-            with pa.OSFile(f'/tmp/{file_name}', 'wb') as f:
-                pq.write_table(table, f)
-            s3.upload_file(f'/tmp/{file_name}', bucket_name, file_name)
+            utils.save_parquet_to_s3(file_contents, s3, bucket_name, file_name)
 
         return {
             'statusCode': 200,
