@@ -3,6 +3,7 @@ import json
 import datetime
 import os
 import pandas as pd
+import fastparquet as fp
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -39,8 +40,8 @@ def lambda_handler(event, context):
 
             # Salva o DataFrame em formato Parquet
             file_name = f'{current_date}/fido-export.parquet'
-            with pd.ExcelWriter(f'/tmp/{file_name}', engine='pyarrow') as writer:
-                df.to_parquet(writer, index=False)
+            with open(f'/tmp/{file_name}', 'wb') as f:
+                fp.write(f, df)
 
             # Envia o arquivo para o S3
             s3.upload_file(f'/tmp/{file_name}', bucket_name, file_name)
