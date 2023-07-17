@@ -54,37 +54,28 @@ def lambda_handler(event, context):
 
             # Loop para processar cada item
             for item in items:
-                # Converte o item em uma string JSON
-                item_json = json.dumps(item)
-
-                # Calcula o tamanho do item em bytes
-                item_size = len(item_json.encode('utf-8'))
-
-                # Verifica se o item cabe no arquivo atual
-                if current_file_size + item_size > max_file_size:
-                    # Salva o arquivo atual no S3 no formato Parquet
-                    table = pa.Table.from_batches([pa.RecordBatch.from_pandas(pd.DataFrame(file_contents))])
-                    with pa.OSFile(f'/tmp/{file_name}', 'wb') as f:
-                        pq.write_table(table, f)
-                    s3.upload_file(f'/tmp/{file_name}', bucket_name, file_name)
-
-                    # Incrementa o contador e cria um novo arquivo
-                    file_counter += 1
-                    file_name = f'{current_date}/fido-export-{file_counter}.parquet'
-                    file_contents = []
-                    current_file_size = 0
-
                 # Adiciona o item à lista do arquivo atual
                 file_contents.append(item)
-                current_file_size += item_size
 
-            # Sai do loop se não houver mais páginas
-            if not last_evaluated_key:
-                break
+            # Calcula o tamanho do arquivo em bytes
+            file_size = len(json.dumps(file_contents).encode('utf-8'))
 
-        # Salva o último arquivo no S3 no formato Parquet
+            # Verifica se o arquivo atual excede o tamanho máximo
+            if file_size > max_file_size:
+                # Salva o arquivo atual em formato Parquet
+                table = pa.Table.from_pandas(pd.DataFrame(file_contents))
+                with pa.OSFile(f'/tmp/{file_name}', 'wb') as f:
+                    pq.write_table(table, f)
+                s3.upload_file(f'/tmp/{file_name}', bucket_name, file_name)
+
+                # Incrementa o contador e cria um novo arquivo
+                file_counter += 1
+                file_name = f'{current_date}/fido-export-{file_counter}.parquet'
+                file_contents = []
+
+        # Salva o último arquivo em formato Parquet
         if file_contents:
-            table = pa.Table.from_batches([pa.RecordBatch.from_pandas(pd.DataFrame(file_contents))])
+            table = pa.Table.from_pandas(pd.DataFrame(file_contents))
             with pa.OSFile(f'/tmp/{file_name}', 'wb') as f:
                 pq.write_table(table, f)
             s3.upload_file(f'/tmp/{file_name}', bucket_name, file_name)
