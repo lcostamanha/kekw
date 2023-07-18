@@ -38,11 +38,15 @@ def lambda_handler(event, context):
             # Cria uma lista de dicionários a partir dos itens
             data = [item for item in items]
 
-            # Cria um schema a partir dos itens
-            schema = pa.Schema.from_pandas(pd.DataFrame(data))
+            # Obtém os nomes dos campos para criar o schema
+            field_names = set()
+            for item in data:
+                field_names.update(item.keys())
+            schema = pa.schema({field_name: pa.string() for field_name in field_names})
 
             # Cria a tabela do Arrow a partir dos itens e do schema
-            table = pa.Table.from_pydict({field.name: [item[field.name]['S'] for item in data] for field in schema})
+            arrays = [pa.array([item.get(field.name, None) for item in data]) for field in schema]
+            table = pa.Table.from_arrays(arrays, schema=schema)
 
             # Salva a tabela em formato Parquet
             folder_name = 'tb_fido'
