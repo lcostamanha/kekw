@@ -2,7 +2,6 @@ import boto3
 import json
 import datetime
 import os
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -37,15 +36,13 @@ def lambda_handler(event, context):
         # Verifica se há itens para salvar
         if items:
             # Cria um DataFrame a partir dos itens
-            df = pd.DataFrame(items)
+            schema = pa.Schema.from_pandas(pd.DataFrame(items))
+            table = pa.Table.from_pandas(df, schema=schema)
 
             # Salva o DataFrame em formato Parquet
             folder_name = 'tb_fido'
             file_name = f'/tmp/{folder_name}/{current_date}.parquet'
             os.makedirs(os.path.dirname(file_name), exist_ok=True)  # Cria o diretório se não existir
-
-            # Convertendo DataFrame para a tabela do Arrow
-            table = pa.Table.from_pandas(df)
 
             # Escrevendo a tabela em formato Parquet
             with pq.ParquetWriter(file_name, table.schema) as writer:
