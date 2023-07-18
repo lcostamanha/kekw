@@ -3,6 +3,7 @@ import json
 import datetime
 import os
 import pandas as pd
+import fastparquet as fp
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -34,14 +35,16 @@ def lambda_handler(event, context):
 
         # Verifica se há itens para salvar
         if items:
-            # Cria um DataFrame a partir dos itens
+            # Criação do DataFrame a partir dos itens
             df = pd.DataFrame(items)
 
-            # Salva o DataFrame em formato Parquet com compressão snappy
+            # Criação do arquivo Parquet
             folder_name = 'tb_fido'
             file_name = f'/tmp/{folder_name}/{current_date}.parquet'
             os.makedirs(os.path.dirname(file_name), exist_ok=True)  # Cria o diretório se não existir
-            df.to_parquet(file_name, compression='snappy')
+
+            # Salva o DataFrame em formato Parquet
+            fp.write(file_name, df, compression='SNAPPY')
 
             # Envia o arquivo para o S3
             s3.upload_file(file_name, bucket_name, f'{folder_name}/{current_date}.parquet')
