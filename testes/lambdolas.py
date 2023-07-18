@@ -54,4 +54,3 @@ def lambda_handler(event, context):
             'statusCode': 500,
             'body': f'Erro ao salvar os dados no S3: {str(e)}'
         }
-
