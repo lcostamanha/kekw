@@ -35,11 +35,16 @@ def lambda_handler(event, context):
 
         # Verifica se há itens para salvar
         if items:
-            # Cria um DataFrame a partir dos itens
-            schema = pa.Schema.from_pandas(pd.DataFrame(items))
-            table = pa.Table.from_pandas(df, schema=schema)
+            # Cria uma lista de dicionários a partir dos itens
+            data = [item for item in items]
 
-            # Salva o DataFrame em formato Parquet
+            # Cria um schema a partir dos itens
+            schema = pa.Schema.from_pandas(pd.DataFrame(data))
+
+            # Cria a tabela do Arrow a partir dos itens e do schema
+            table = pa.Table.from_pydict({field.name: [item[field.name]['S'] for item in data] for field in schema})
+
+            # Salva a tabela em formato Parquet
             folder_name = 'tb_fido'
             file_name = f'/tmp/{folder_name}/{current_date}.parquet'
             os.makedirs(os.path.dirname(file_name), exist_ok=True)  # Cria o diretório se não existir
