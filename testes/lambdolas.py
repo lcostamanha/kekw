@@ -1,4 +1,4 @@
- import boto3
+import boto3
 import json
 import datetime
 import os
@@ -39,11 +39,12 @@ def lambda_handler(event, context):
             df = pd.DataFrame(items)
 
             # Salva o DataFrame em formato Parquet
-            file_name = f'{current_date}/fido-export.parquet'
+            file_name = f'/tmp/{current_date}/fido-export.parquet'
+            os.makedirs(os.path.dirname(file_name), exist_ok=True)  # Cria o diretório se não existir
             fastparquet.write(file_name, df, compression='GZIP')
 
             # Envia o arquivo para o S3
-            s3.upload_file(file_name, bucket_name, file_name)
+            s3.upload_file(file_name, bucket_name, f'{current_date}/fido-export.parquet')
 
         return {
             'statusCode': 200,
