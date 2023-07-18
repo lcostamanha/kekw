@@ -2,8 +2,7 @@ import boto3
 import json
 import datetime
 import os
-import pyarrow as pa
-import pyarrow.parquet as pq
+import pandas as pd
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -35,27 +34,14 @@ def lambda_handler(event, context):
 
         # Verifica se há itens para salvar
         if items:
-            # Cria uma lista de dicionários a partir dos itens
-            data = [item for item in items]
+            # Cria um DataFrame a partir dos itens
+            df = pd.DataFrame(items)
 
-            # Obtém os nomes dos campos para criar o schema
-            field_names = set()
-            for item in data:
-                field_names.update(item.keys())
-            schema = pa.schema({field_name: pa.string() for field_name in field_names})
-
-            # Cria a tabela do Arrow a partir dos itens e do schema
-            arrays = [pa.array([item.get(field.name, None) for item in data]) for field in schema]
-            table = pa.Table.from_arrays(arrays, schema=schema)
-
-            # Salva a tabela em formato Parquet
+            # Salva o DataFrame em formato Parquet com compressão snappy
             folder_name = 'tb_fido'
             file_name = f'/tmp/{folder_name}/{current_date}.parquet'
             os.makedirs(os.path.dirname(file_name), exist_ok=True)  # Cria o diretório se não existir
-
-            # Escrevendo a tabela em formato Parquet
-            with pq.ParquetWriter(file_name, table.schema) as writer:
-                writer.write_table(table)
+            df.to_parquet(file_name, compression='snappy')
 
             # Envia o arquivo para o S3
             s3.upload_file(file_name, bucket_name, f'{folder_name}/{current_date}.parquet')
