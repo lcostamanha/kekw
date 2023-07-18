@@ -3,7 +3,8 @@ import json
 import datetime
 import os
 import pandas as pd
-import fastparquet
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -42,7 +43,13 @@ def lambda_handler(event, context):
             folder_name = 'tb_fido'
             file_name = f'/tmp/{folder_name}/{current_date}.parquet'
             os.makedirs(os.path.dirname(file_name), exist_ok=True)  # Cria o diretório se não existir
-            fastparquet.write(file_name, df, compression='GZIP')
+
+            # Convertendo DataFrame para a tabela do Arrow
+            table = pa.Table.from_pandas(df)
+
+            # Escrevendo a tabela em formato Parquet
+            with pq.ParquetWriter(file_name, table.schema) as writer:
+                writer.write_table(table)
 
             # Envia o arquivo para o S3
             s3.upload_file(file_name, bucket_name, f'{folder_name}/{current_date}.parquet')
