@@ -34,11 +34,13 @@ def lambda_handler(event, context):
 
         # Verifica se há itens para salvar
         if items:
-            # Salvar os dados em formato Parquet usando o AWS Data Wrangler
+            # Criar um DataFrame do Pandas a partir dos itens do DynamoDB
             df = wr.pandas.DataFrame.from_records(items)
+
+            # Salvar o DataFrame em formato Parquet usando o AWS Data Wrangler
             folder_name = 'tb_fido'
             file_name = f'/tmp/{folder_name}/{current_date}.parquet'
-            wr.s3.to_parquet(df, path=file_name, dataset=True)
+            wr.s3.to_parquet(df, path=file_name, dataset=True, index=False, compression="snappy")
 
             # Enviar o arquivo para o S3
             s3.upload_file(file_name, bucket_name, f'{folder_name}/{current_date}.parquet')
