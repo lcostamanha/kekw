@@ -39,7 +39,7 @@ def lambda_handler(event, context):
 
             # Salvar o DataFrame em formato Parquet
             file_name = f'nome_do_arquivo.parquet'
-            df.to_parquet(file_name, index=False)
+            df.to_parquet(file_name, index=False, compression='snappy')
 
             # Enviar o arquivo para o S3
             s3.upload_file(file_name, bucket_name, file_name)
