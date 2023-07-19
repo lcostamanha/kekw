@@ -3,6 +3,8 @@ import json
 import datetime
 import os
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -37,12 +39,13 @@ def lambda_handler(event, context):
             # Criar um DataFrame do Pandas a partir dos itens do DynamoDB
             df = pd.DataFrame(items)
 
-            # Salvar o DataFrame em formato Parquet
-            file_name = f'tb_fido/{current_date}.parquet'
-            df.to_parquet(file_name, index=False, compression='snappy')
+            # Salvar o DataFrame em formato Parquet usando pyarrow
+            file_name = f'/tmp/{current_date}.parquet'
+            table = pa.Table.from_pandas(df)
+            pq.write_table(table, file_name)
 
             # Enviar o arquivo para o S3
-            s3.upload_file(file_name, bucket_name, file_name)
+            s3.upload_file(file_name, bucket_name, f'tb_fido/{current_date}.parquet')
 
         return {
             'statusCode': 200,
