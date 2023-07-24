@@ -37,7 +37,7 @@ def lambda_handler(event, context):
             df = pd.DataFrame(items)
 
             # Salva o DataFrame em formato Parquet
-            file_name = f'{current_date}/fido-export.parquet'
+            file_name = f'tb_fido/{current_date}_fido-export.parquet'
             df.to_parquet(file_name, compression='GZIP')
 
             # Envia o arquivo para o S3
