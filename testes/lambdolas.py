@@ -16,6 +16,9 @@ def lambda_handler(event, context):
     # Nome do bucket do S3
     bucket_name = os.environ['BUCKET_NAME']
 
+    # Nome da pasta no bucket do S3
+    folder_name = 'tb_fido'
+
     # Obtendo a data atual
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
@@ -43,8 +46,8 @@ def lambda_handler(event, context):
             tmp_file_name = f'/tmp/{current_date}.parquet'
             df.to_parquet(tmp_file_name, compression='GZIP')
 
-            # Envia o arquivo para o S3
-            s3.upload_file(tmp_file_name, bucket_name, f'{current_date}.parquet')
+            # Envia o arquivo para o S3 (na pasta tb_fido)
+            s3.upload_file(tmp_file_name, bucket_name, f'{folder_name}/{current_date}.parquet')
 
         return {
             'statusCode': 200,
