@@ -2,6 +2,7 @@ import boto3
 import datetime
 import pandas as pd
 import os
+import json
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -14,7 +15,7 @@ def lambda_handler(event, context):
     table_name = 'tbes2004_web_rgto_crdl'
 
     # Nome do bucket do S3
-    bucket_name = '<nome-do-seu-bucket>'
+    bucket_name = os.environ['BUCKET_NAME']
 
     # Obtendo a data atual
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -33,8 +34,11 @@ def lambda_handler(event, context):
 
         # Verifica se há itens para salvar
         if items:
-            # Cria um DataFrame a partir dos itens
-            df = pd.DataFrame(items)
+            # Converter os dados JSON em valores simples
+            data_list = [json.loads(json.dumps(item)) for item in items]
+
+            # Cria um DataFrame a partir dos dados
+            df = pd.DataFrame(data_list)
 
             # Salva o DataFrame em formato Parquet no diretório temporário
             tmp_file_name = f'/tmp/{current_date}.parquet'
