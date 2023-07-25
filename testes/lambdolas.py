@@ -2,7 +2,6 @@ import boto3
 import datetime
 import pandas as pd
 import os
-import json
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -34,11 +33,11 @@ def lambda_handler(event, context):
 
         # Verifica se há itens para salvar
         if items:
-            # Converter os dados JSON em valores simples
-            data_list = [json.loads(json.dumps(item)) for item in items]
+            # Transforma os itens em um formato adequado para o DataFrame
+            transformed_items = [{key: list(value.values())[0] for key, value in item.items()} for item in items]
 
-            # Cria um DataFrame a partir dos dados
-            df = pd.DataFrame(data_list)
+            # Cria o DataFrame a partir dos itens transformados
+            df = pd.DataFrame(transformed_items)
 
             # Salva o DataFrame em formato Parquet no diretório temporário
             tmp_file_name = f'/tmp/{current_date}.parquet'
