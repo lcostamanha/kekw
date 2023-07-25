@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         # Verifica se há itens para salvar
         if items:
             # Transforma os itens em um formato adequado para o DataFrame
-            transformed_items = [{key: list(value.values())[0] for key, value in item.items()} for item in items]
+            transformed_items = [{key: list(value.values())[0] if isinstance(value, dict) else value for key, value in item.items()} for item in items]
 
             # Cria o DataFrame a partir dos itens transformados
             df = pd.DataFrame(transformed_items)
