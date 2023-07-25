@@ -31,6 +31,9 @@ def lambda_handler(event, context):
     # Nome do bucket do S3
     bucket_name = os.environ['BUCKET_NAME']
 
+    # Nome da pasta no bucket do S3
+    folder_name = 'tb_fido'
+
     # Obtendo a data atual
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
