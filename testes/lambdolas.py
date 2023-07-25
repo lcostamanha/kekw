@@ -3,6 +3,24 @@ import datetime
 import pandas as pd
 import os
 
+def flatten_value(value):
+    if isinstance(value, dict):
+        for k, v in value.items():
+            if isinstance(v, dict) and len(v) == 1:
+                v_key, v_value = list(v.items())[0]
+                if v_key in ('S', 'B', 'N'):
+                    value[k] = v_value
+                elif v_key == 'L':
+                    if k == 'txt_aler':
+                        value[k] = v_value
+                    else:
+                        value[k] = list(map(flatten_value, v_value))
+                elif v_key == 'M':
+                    value[k] = flatten_value(v_value)
+            else:
+                value[k] = flatten_value(v)
+    return value
+
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
     dynamodb = boto3.client('dynamodb')
@@ -36,8 +54,7 @@ def lambda_handler(event, context):
 
         # Verifica se há itens para salvar
         if items:
-            # Transforma os itens em um formato adequado para o DataFrame
-            transformed_items = [{key: list(value.values())[0] if isinstance(value, dict) else value for key, value in item.items()} for item in items]
+            transformed_items = [{key: flatten_value(value) for key, value in item.items()} for item in items]
 
             # Cria o DataFrame a partir dos itens transformados
             df = pd.DataFrame(transformed_items)
