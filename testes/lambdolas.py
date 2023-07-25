@@ -1,5 +1,6 @@
 import boto3
 from collections import defaultdict
+import pandas as pd
 
 def flatten_value(value):
     if isinstance(value, dict):
@@ -11,6 +12,14 @@ def flatten_value(value):
                 return {k: flatten_value(v)}
     return value
 
+def save_to_parquet(data, bucket_name, file_name):
+    # Cria o DataFrame a partir dos dados
+    df = pd.DataFrame(data)
+
+    # Salva o DataFrame em formato Parquet no S3
+    s3 = boto3.client('s3')
+    s3.put_object(Body=df.to_parquet(), Bucket=bucket_name, Key=file_name)
+
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
     dynamodb = boto3.client('dynamodb')
@@ -21,7 +30,7 @@ def lambda_handler(event, context):
         tables = response['TableNames']
 
         # Dicionário para armazenar os resultados
-        results = defaultdict(dict)
+        results = defaultdict(list)
 
         # Para cada tabela, consulta todos os itens
         for table_name in tables:
@@ -43,9 +52,14 @@ def lambda_handler(event, context):
                 for key, value in item.items():
                     results[key].append(value)
 
+        # Salva os dados no formato Parquet no S3
+        bucket_name = 'NOME_DO_BUCKET'  # Substitua pelo nome do seu bucket S3
+        file_name = 'dados.parquet'  # Nome do arquivo no S3
+        save_to_parquet(results, bucket_name, file_name)
+
         return {
             'statusCode': 200,
-            'body': results
+            'body': 'Dados salvos no S3 com sucesso.'
         }
 
     except Exception as e:
