@@ -1,7 +1,7 @@
 import boto3
 import datetime
-import os
 import pandas as pd
+import os
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
@@ -14,7 +14,7 @@ def lambda_handler(event, context):
     table_name = 'tbes2004_web_rgto_crdl'
 
     # Nome do bucket do S3
-    bucket_name = os.environ['BUCKET_NAME']
+    bucket_name = '<nome-do-seu-bucket>'
 
     # Obtendo a data atual
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -36,12 +36,12 @@ def lambda_handler(event, context):
             # Cria um DataFrame a partir dos itens
             df = pd.DataFrame(items)
 
-            # Salva o DataFrame em formato Parquet
-            file_name = f'tb_fido/{current_date}.parquet'
-            df.to_parquet(file_name, compression='GZIP')
+            # Salva o DataFrame em formato Parquet no diretório temporário
+            tmp_file_name = f'/tmp/{current_date}.parquet'
+            df.to_parquet(tmp_file_name, compression='GZIP')
 
             # Envia o arquivo para o S3
-            s3.upload_file(file_name, bucket_name, file_name)
+            s3.upload_file(tmp_file_name, bucket_name, f'{current_date}.parquet')
 
         return {
             'statusCode': 200,
