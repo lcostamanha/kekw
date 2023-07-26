@@ -3,32 +3,39 @@ import datetime
 import pandas as pd
 import os
 
-def flatten_value(value):
-    if isinstance(value, dict):
-        if len(value) == 1:
-            v_key, v_value = list(value.items())[0]
-            if v_key in ('S', 'B', 'N'):
-                return v_value
-            elif v_key == 'M':
-                return flatten_value(v_value)
-        return {k: flatten_value(v) for k, v in value.items()}
-    return value
+def extract_description(item):
+    txt_objt_chav_pubi = item.get("txt_objt_chav_pubi", {})
+    nom_idef_mtdo = txt_objt_chav_pubi.get("nom_idef_mtdo", {})
+    device_properties = nom_idef_mtdo.get("device_properties", [])
+    if device_properties and isinstance(device_properties, list):
+        first_device_property = device_properties[0]
+        item_description = first_device_property.get("item", {}).get("description", "")
+        if not isinstance(item_description, dict):
+            return item_description
+    return ""
 
 def transform_items(items):
     transformed_items = []
     for item in items:
         transformed_item = {}
         for key, value in item.items():
-            if key == "txt_objt_chav_pubi" and isinstance(value, dict):
-                description = value.get("nom_idef_mtdo", {}).get("device_properties", [{}])[0].get("item", {}).get("description", "")
-                transformed_item[key] = description if not isinstance(description, dict) else ""
+            if key == "txt_objt_chav_pubi":
+                transformed_item[key] = extract_description(item)
+            elif isinstance(value, dict):
+                transformed_item[key] = flatten_value(value)
             else:
-                if isinstance(value, dict):
-                    transformed_item[key] = flatten_value(value)
-                else:
-                    transformed_item[key] = value
+                transformed_item[key] = value
         transformed_items.append(transformed_item)
     return transformed_items
+
+def flatten_value(value):
+    if isinstance(value, dict):
+        if len(value) == 1:
+            v_key, v_value = list(value.items())[0]
+            if v_key in ('S', 'B', 'N'):
+                return v_value
+        return {k: flatten_value(v) for k, v in value.items()}
+    return value
 
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
