@@ -3,40 +3,6 @@ import datetime
 import pandas as pd
 import os
 
-def extract_description(item):
-    txt_objt_chav_pubi = item.get("txt_objt_chav_pubi", {})
-    nom_idef_mtdo = txt_objt_chav_pubi.get("nom_idef_mtdo", {})
-    device_properties = nom_idef_mtdo.get("device_properties", [])
-    if device_properties and isinstance(device_properties, list):
-        first_device_property = device_properties[0]
-        item_description = first_device_property.get("item", {}).get("description", "")
-        if not isinstance(item_description, dict):
-            return item_description
-    return ""
-
-def transform_items(items):
-    transformed_items = []
-    for item in items:
-        transformed_item = {}
-        for key, value in item.items():
-            if key == "txt_objt_chav_pubi":
-                transformed_item[key] = extract_description(item)
-            elif isinstance(value, dict):
-                transformed_item[key] = flatten_value(value)
-            else:
-                transformed_item[key] = value
-        transformed_items.append(transformed_item)
-    return transformed_items
-
-def flatten_value(value):
-    if isinstance(value, dict):
-        if len(value) == 1:
-            v_key, v_value = list(value.items())[0]
-            if v_key in ('S', 'B', 'N'):
-                return v_value
-        return {k: flatten_value(v) for k, v in value.items()}
-    return value
-
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
     dynamodb = boto3.client('dynamodb')
@@ -68,11 +34,18 @@ def lambda_handler(event, context):
             items.extend(response['Items'])
             last_evaluated_key = response.get('LastEvaluatedKey')
 
-        # Transforma os itens em um formato mais simples (sem a camada de chave-valor)
-        transformed_items = transform_items(items)
+        # Processa os itens para extrair apenas o valor do "description" no campo "txt_objt_chav_pubi"
+        for item in items:
+            if 'txt_objt_chav_pubi' in item and 'M' in item['txt_objt_chav_pubi']:
+                item['txt_objt_chav_pubi'] = item['txt_objt_chav_pubi']['M'].get('description', '')
 
-        # Cria o DataFrame a partir dos itens transformados
-        df = pd.DataFrame(transformed_items)
+        # Remove o campo "txt_objt_usua" de todos os itens
+        for item in items:
+            if 'txt_objt_usua' in item:
+                del item['txt_objt_usua']
+
+        # Cria o DataFrame a partir dos itens
+        df = pd.DataFrame(items)
 
         # Salva o DataFrame em formato Parquet no diretório temporário
         tmp_file_name = f'/tmp/{current_date}.parquet'
