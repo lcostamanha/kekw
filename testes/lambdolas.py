@@ -3,6 +3,27 @@ import datetime
 import pandas as pd
 import os
 
+def flatten_value(value):
+    if isinstance(value, dict):
+        for k, v in value.items():
+            if isinstance(v, dict) and len(v) == 1:
+                v_key, v_value = list(v.items())[0]
+                if v_key in ('S', 'B', 'N'):
+                    return {k: v_value}
+                else:
+                    return {k: flatten_value(v)}  # Lidar com o caso de camada interna de chave-valor
+            else:
+                return {k: flatten_value(v)}
+    return value
+
+def transform_items(items):
+    transformed_items = []
+    for item in items:
+        transformed_item = {key: flatten_value(value) for key, value in item.items()}
+        transformed_item = {k: v for key, value in transformed_item.items() for k, v in value.items()}
+        transformed_items.append(transformed_item)
+    return transformed_items
+
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
     dynamodb = boto3.client('dynamodb')
@@ -39,6 +60,8 @@ def lambda_handler(event, context):
             for key, value in item.items():
                 if isinstance(value, dict) and len(value) == 1:
                     item[key] = list(value.values())[0]
+                else:
+                    item[key] = flatten_value(value)  # Lidar com o caso de camada interna de chave-valor
 
         # Cria o DataFrame a partir dos itens transformados
         df = pd.DataFrame(items)
