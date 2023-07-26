@@ -9,6 +9,8 @@ def flatten_value(value):
             v_key, v_value = list(value.items())[0]
             if v_key in ('S', 'B', 'N'):
                 return v_value
+            elif v_key == 'M':
+                return flatten_value(v_value)
         return {k: flatten_value(v) for k, v in value.items()}
     return value
 
