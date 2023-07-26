@@ -74,9 +74,6 @@ def lambda_handler(event, context):
         # Cria o DataFrame a partir dos itens transformados
         df = pd.DataFrame(transformed_items)
 
-        # Modifica o campo "txt_objt_chav_pubi" para conter apenas o valor "description"
-        df['txt_objt_chav_pubi'] = df['txt_objt_chav_pubi'].apply(lambda item: item.get('description', ''))
-
         # Salva o DataFrame em formato Parquet no diretório temporário
         tmp_file_name = f'/tmp/{current_date}.parquet'
         df.to_parquet(tmp_file_name, compression='GZIP')
