@@ -17,10 +17,13 @@ def transform_items(items):
     for item in items:
         transformed_item = {}
         for key, value in item.items():
-            if isinstance(value, dict):
-                transformed_item[key] = flatten_value(value)
+            if key == "txt_objt_chav_pubi" and isinstance(value, dict):
+                transformed_item[key] = flatten_value(value.get("nom_idef_mtdo", {}).get("device_properties", [{}])[0].get("item", {}).get("description", ""))
             else:
-                transformed_item[key] = value
+                if isinstance(value, dict):
+                    transformed_item[key] = flatten_value(value)
+                else:
+                    transformed_item[key] = value
         transformed_items.append(transformed_item)
     return transformed_items
 
