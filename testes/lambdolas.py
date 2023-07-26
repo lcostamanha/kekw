@@ -1,60 +1,81 @@
-import json
-import pandas as pd
 import boto3
+import datetime
+import pandas as pd
+import os
+
+def flatten_value(value):
+    if isinstance(value, dict):
+        if len(value) == 1:
+            v_key, v_value = list(value.items())[0]
+            if v_key in ('S', 'B', 'N'):
+                return v_value
+            elif v_key == 'M':
+                return {k: flatten_value(v) for k, v in v_value.items()}
+            elif v_key == 'L':
+                return [flatten_value(item) for item in v_value]
+        return {k: flatten_value(v) for k, v in value.items()}
+    return value
+
+def transform_items(items):
+    transformed_items = []
+    for item in items:
+        transformed_item = {}
+        for key, value in item.items():
+            transformed_item[key] = flatten_value(value)
+        transformed_items.append(transformed_item)
+    return transformed_items
 
 def lambda_handler(event, context):
+    # Configuração do cliente do DynamoDB
+    dynamodb = boto3.client('dynamodb')
+
+    # Configuração do cliente do S3
+    s3 = boto3.client('s3')
+
     # Nome da tabela do DynamoDB
-    table_name = 'nome_da_sua_tabela'
+    table_name = 'tbes2004_web_rgto_crdl'
 
-    # Inicializar o cliente do DynamoDB
-    dynamodb_client = boto3.client('dynamodb')
+    # Nome do bucket do S3
+    bucket_name = os.environ['BUCKET_NAME']
 
-    # Realizar a leitura dos dados do DynamoDB
-    response = dynamodb_client.scan(TableName=table_name)
+    # Nome da pasta no bucket do S3
+    folder_name = 'tb_fido'
 
-    # Extrair os itens do resultado da leitura
-    items = response['Items']
+    # Obtendo a data atual
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
-    # Converter os itens do DynamoDB em objetos Python
-    data = [json.loads(item) for item in items]
+    try:
+        # Obtendo todos os itens da tabela do DynamoDB
+        response = dynamodb.scan(TableName=table_name)
+        items = response['Items']
 
-    # Lista para armazenar os resultados processados
-    processed_results = []
+        # Verifica se há mais páginas de resultados
+        last_evaluated_key = response.get('LastEvaluatedKey')
+        while last_evaluated_key:
+            response = dynamodb.scan(TableName=table_name, ExclusiveStartKey=last_evaluated_key)
+            items.extend(response['Items'])
+            last_evaluated_key = response.get('LastEvaluatedKey')
 
-    # Iterar sobre cada entrada no JSON e extrair as chaves desejadas
-    for entry in data:
-        processed_entry = {
-            "cod_idef_pess": entry["cod_idef_pess"]["S"],
-            "num_cnta_entr": entry["num_cnta_entr"]["S"],
-            "cod_usua_cada_crdl": entry["cod_usua_cada_crdl"]["S"],
-            "cod_idef_usua": entry["txt_objt_usua"]["M"]["cod_idef_usua"]["S"],
-            "nom_exib_usua": entry["txt_objt_usua"]["M"]["nom_exib_usua"]["S"],
-            "nom_usua": entry["txt_objt_usua"]["M"]["nom_usua"]["S"]
+        # Transforma os itens em um formato mais simples (sem a camada de chave-valor)
+        transformed_items = transform_items(items)
+
+        # Cria o DataFrame a partir dos itens transformados
+        df = pd.DataFrame(transformed_items)
+
+        # Salva o DataFrame em formato Parquet no diretório temporário
+        tmp_file_name = f'/tmp/{current_date}.parquet'
+        df.to_parquet(tmp_file_name, compression='GZIP')
+
+        # Envia o arquivo para o S3 (na pasta tb_fido)
+        s3.upload_file(tmp_file_name, bucket_name, f'{folder_name}/{current_date}.parquet')
+
+        return {
+            'statusCode': 200,
+            'body': 'Dados salvos no S3 com sucesso.'
         }
-        # Adicione mais chaves conforme necessário
 
-        # Adicionar o resultado processado à lista
-        processed_results.append(processed_entry)
-
-    # Criar um DataFrame pandas com os resultados processados
-    df = pd.DataFrame(processed_results)
-
-    # Especificar o caminho do arquivo parquet
-    parquet_file_path = "/tmp/results.parquet"
-
-    # Salvar o DataFrame em formato parquet
-    df.to_parquet(parquet_file_path, index=False)
-
-    # Ler o arquivo parquet em formato bytes
-    with open(parquet_file_path, "rb") as f:
-        parquet_data = f.read()
-
-    # Retornar o arquivo parquet em formato bytes
-    return {
-        "statusCode": 200,
-        "body": parquet_data,
-        "headers": {
-            "Content-Type": "application/octet-stream",
-            "Content-Disposition": "attachment; filename=results.parquet"
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': f'Erro ao salvar os dados no S3: {str(e)}'
         }
-    }
