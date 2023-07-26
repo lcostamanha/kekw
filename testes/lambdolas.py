@@ -3,6 +3,19 @@ import datetime
 import pandas as pd
 import os
 
+def flatten_value(value):
+    if isinstance(value, dict):
+        if len(value) == 1:
+            v_key, v_value = list(value.items())[0]
+            if v_key in ('S', 'B', 'N'):
+                return v_value
+            elif v_key == 'M':
+                return flatten_value(v_value)
+        return {k: flatten_value(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [flatten_value(v) for v in value]
+    return value
+
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
     dynamodb = boto3.client('dynamodb')
@@ -34,18 +47,11 @@ def lambda_handler(event, context):
             items.extend(response['Items'])
             last_evaluated_key = response.get('LastEvaluatedKey')
 
-        # Processa os itens para extrair apenas o valor do "description" no campo "txt_objt_chav_pubi"
-        for item in items:
-            if 'txt_objt_chav_pubi' in item and 'M' in item['txt_objt_chav_pubi']:
-                item['txt_objt_chav_pubi'] = item['txt_objt_chav_pubi']['M'].get('description', '')
+        # Transforma os itens em um formato mais simples (sem a camada de chave-valor)
+        transformed_items = [flatten_value(item) for item in items]
 
-        # Remove o campo "txt_objt_usua" de todos os itens
-        for item in items:
-            if 'txt_objt_usua' in item:
-                del item['txt_objt_usua']
-
-        # Cria o DataFrame a partir dos itens
-        df = pd.DataFrame(items)
+        # Cria o DataFrame a partir dos itens transformados
+        df = pd.DataFrame(transformed_items)
 
         # Salva o DataFrame em formato Parquet no diretório temporário
         tmp_file_name = f'/tmp/{current_date}.parquet'
