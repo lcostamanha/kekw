@@ -18,6 +18,14 @@ def flatten_value(value):
                 return {k: flatten_value(v)}
     return value
 
+def transform_items(items):
+    transformed_items = []
+    for item in items:
+        transformed_item = {key: flatten_value(value) for key, value in item.items()}
+        transformed_item = {k: v for key, value in transformed_item.items() for k, v in value.items()}
+        transformed_items.append(transformed_item)
+    return transformed_items
+
 def lambda_handler(event, context):
     # Configuração do cliente do DynamoDB
     dynamodb = boto3.client('dynamodb')
@@ -50,7 +58,7 @@ def lambda_handler(event, context):
             last_evaluated_key = response.get('LastEvaluatedKey')
 
         # Transforma os itens em uma estrutura mais plana
-        transformed_items = [{key: flatten_value(value) for key, value in item.items()} for item in items]
+        transformed_items = transform_items(items)
 
         # Cria o DataFrame a partir dos itens transformados
         df = pd.DataFrame(transformed_items)
