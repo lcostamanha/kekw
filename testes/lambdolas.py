@@ -18,7 +18,8 @@ def transform_items(items):
         transformed_item = {}
         for key, value in item.items():
             if key == "txt_objt_chav_pubi" and isinstance(value, dict):
-                transformed_item[key] = flatten_value(value.get("nom_idef_mtdo", {}).get("device_properties", [{}])[0].get("item", {}).get("description", ""))
+                description = value.get("nom_idef_mtdo", {}).get("device_properties", [{}])[0].get("item", {}).get("description", "")
+                transformed_item[key] = description if not isinstance(description, dict) else ""
             else:
                 if isinstance(value, dict):
                     transformed_item[key] = flatten_value(value)
