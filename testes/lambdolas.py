@@ -15,7 +15,12 @@ def flatten_value(value):
 def transform_items(items):
     transformed_items = []
     for item in items:
-        transformed_item = {key: flatten_value(value) for key, value in item.items()}
+        transformed_item = {}
+        for key, value in item.items():
+            if isinstance(value, dict):
+                transformed_item[key] = flatten_value(value)
+            else:
+                transformed_item[key] = value
         transformed_items.append(transformed_item)
     return transformed_items
 
