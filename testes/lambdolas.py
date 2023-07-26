@@ -63,6 +63,10 @@ def lambda_handler(event, context):
         # Cria o DataFrame a partir dos itens transformados
         df = pd.DataFrame(transformed_items)
 
+        # Transforma os tipos de dados para remover a camada de chave-valor
+        for column in df.columns:
+            df[column] = df[column].apply(lambda x: x[column] if isinstance(x, dict) and column in x else x)
+
         # Salva o DataFrame em formato Parquet no diretório temporário
         tmp_file_name = f'/tmp/{current_date}.parquet'
         df.to_parquet(tmp_file_name, compression='GZIP')
