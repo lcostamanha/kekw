@@ -1,7 +1,5 @@
 import json
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 def lambda_handler(event, context):
     # Extrair o conteúdo do arquivo JSON do evento recebido
@@ -31,14 +29,11 @@ def lambda_handler(event, context):
     # Criar um DataFrame pandas com os resultados processados
     df = pd.DataFrame(processed_results)
 
-    # Converter o DataFrame para uma tabela PyArrow
-    table = pa.Table.from_pandas(df)
-
     # Especificar o caminho do arquivo parquet
     parquet_file_path = "/tmp/results.parquet"
 
-    # Escrever a tabela no arquivo parquet
-    pq.write_table(table, parquet_file_path)
+    # Salvar o DataFrame em formato parquet sem o pyarrow
+    df.to_parquet(parquet_file_path, index=False)
 
     # Ler o arquivo parquet em formato bytes
     with open(parquet_file_path, "rb") as f:
