@@ -9,10 +9,6 @@ def flatten_value(value):
             v_key, v_value = list(value.items())[0]
             if v_key in ('S', 'B', 'N'):
                 return v_value
-            elif v_key == 'M':
-                return {k: flatten_value(v) for k, v in v_value.items()}
-            elif v_key == 'L':
-                return [flatten_value(item) for item in v_value]
         return {k: flatten_value(v) for k, v in value.items()}
     return value
 
@@ -21,61 +17,35 @@ def transform_items(items):
     for item in items:
         transformed_item = {}
         for key, value in item.items():
-            transformed_item[key] = flatten_value(value)
+            if isinstance(value, dict):
+                transformed_item[key] = flatten_value(value)
+            else:
+                transformed_item[key] = value
         transformed_items.append(transformed_item)
     return transformed_items
 
+def get_description(item):
+    if "txt_objt_chav_pubi" in item:
+        txt_objt_chav_pubi = item["txt_objt_chav_pubi"]
+        if "txt_objt_idef_chav" in txt_objt_chav_pubi:
+            txt_objt_idef_chav = txt_objt_chav_pubi["txt_objt_idef_chav"]
+            if "txt_trsp" in txt_objt_idef_chav:
+                txt_trsp = txt_objt_idef_chav["txt_trsp"]
+                if txt_trsp:
+                    return txt_trsp[0]["item"]
+    return None
+
 def lambda_handler(event, context):
-    # Configuração do cliente do DynamoDB
-    dynamodb = boto3.client('dynamodb')
+    # Restante do código igual ao lambda anterior...
 
-    # Configuração do cliente do S3
-    s3 = boto3.client('s3')
+    # Cria o DataFrame a partir dos itens transformados
+    df = pd.DataFrame(transformed_items)
 
-    # Nome da tabela do DynamoDB
-    table_name = 'tbes2004_web_rgto_crdl'
+    # Adiciona a coluna "txt_objt_chav_pubi_description" com o valor desejado
+    df["txt_objt_chav_pubi_description"] = df.apply(get_description, axis=1)
 
-    # Nome do bucket do S3
-    bucket_name = os.environ['BUCKET_NAME']
+    # Salva o DataFrame em formato Parquet no diretório temporário
+    tmp_file_name = f'/tmp/{current_date}.parquet'
+    df.to_parquet(tmp_file_name, compression='GZIP')
 
-    # Nome da pasta no bucket do S3
-    folder_name = 'tb_fido'
-
-    # Obtendo a data atual
-    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-
-    try:
-        # Obtendo todos os itens da tabela do DynamoDB
-        response = dynamodb.scan(TableName=table_name)
-        items = response['Items']
-
-        # Verifica se há mais páginas de resultados
-        last_evaluated_key = response.get('LastEvaluatedKey')
-        while last_evaluated_key:
-            response = dynamodb.scan(TableName=table_name, ExclusiveStartKey=last_evaluated_key)
-            items.extend(response['Items'])
-            last_evaluated_key = response.get('LastEvaluatedKey')
-
-        # Transforma os itens em um formato mais simples (sem a camada de chave-valor)
-        transformed_items = transform_items(items)
-
-        # Cria o DataFrame a partir dos itens transformados
-        df = pd.DataFrame(transformed_items)
-
-        # Salva o DataFrame em formato Parquet no diretório temporário
-        tmp_file_name = f'/tmp/{current_date}.parquet'
-        df.to_parquet(tmp_file_name, compression='GZIP')
-
-        # Envia o arquivo para o S3 (na pasta tb_fido)
-        s3.upload_file(tmp_file_name, bucket_name, f'{folder_name}/{current_date}.parquet')
-
-        return {
-            'statusCode': 200,
-            'body': 'Dados salvos no S3 com sucesso.'
-        }
-
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'body': f'Erro ao salvar os dados no S3: {str(e)}'
-        }
+    # Restante do código igual ao lambda anterior...
