@@ -24,7 +24,7 @@ def flatten_value(value):
 
 def get_description(obj):
     try:
-        return obj['M']['nom_idef_mtdo']['L'][0]['M']['description']['S']
+        return obj['M']['nom_idef_mtdo']['M']['device_properties']['L'][0]['M']['description']['S']
     except (KeyError, IndexError, TypeError):
         return ''
 
