@@ -5,13 +5,21 @@ import os
 
 def flatten_value(value):
     if isinstance(value, dict):
+        # Ignora completamente o campo txt_objt_usua
+        if 'txt_objt_usua' in value:
+            del value['txt_objt_usua']
+
+        # Se o campo txt_objt_chav_pubi existir, substitua pelo campo description dentro dele
+        if 'txt_objt_chav_pubi' in value:
+            value['txt_objt_chav_pubi'] = value['txt_objt_chav_pubi'].get('description', '')
+
         if len(value) == 1:
             v_key, v_value = list(value.items())[0]
             if v_key in ('S', 'B', 'N'):
                 return v_value
             elif v_key == 'M':
                 return flatten_value(v_value)
-        return {k: flatten_value(v) for k, v in value.items()}
+        return {k: flatten_value(v) for k, v in value.items() if k != 'L'}  # Ignora os campos que são 'L'
     elif isinstance(value, list):
         return [flatten_value(v) for v in value]
     return value
@@ -45,7 +53,7 @@ def lambda_handler(event, context):
         while last_evaluated_key:
             response = dynamodb.scan(TableName=table_name, ExclusiveStartKey=last_evaluated_key)
             items.extend(response['Items'])
-            last_evaluated_key = response.get('LastEvaluatedKey')
+            last_evaluated_key = response.get('LastEvaluated_key')
 
         # Transforma os itens em um formato mais simples (sem a camada de chave-valor)
         transformed_items = [flatten_value(item) for item in items]
