@@ -2,8 +2,6 @@ import boto3
 import datetime
 import pandas as pd
 import os
-import json
-import math
 
 def flatten_value(value):
     if isinstance(value, dict):
@@ -36,29 +34,28 @@ def lambda_handler(event, context):
     table_name = 'tbes2004_web_rgto_crdl'
     bucket_name = os.environ['BUCKET_NAME']
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    indices = ["xes20042", "xes20043", "xes20044"]
 
     try:
-        response = dynamodb.scan(TableName=table_name)
-        items = response['Items']
-
-        last_evaluated_key = response.get('LastEvaluatedKey')
-        while last_evaluated_key:
-            response = dynamodb.scan(TableName=table_name, ExclusiveStartKey=last_evaluated_key)
+        items = []
+        for index in indices:
+            response = dynamodb.query(TableName=table_name, IndexName=index)
             items.extend(response['Items'])
+
             last_evaluated_key = response.get('LastEvaluatedKey')
+            while last_evaluated_key:
+                response = dynamodb.query(TableName=table_name, IndexName=index, ExclusiveStartKey=last_evaluated_key)
+                items.extend(response['Items'])
+                last_evaluated_key = response.get('LastEvaluatedKey')
 
         transformed_items = [flatten_value(item) for item in items]
 
         df = pd.DataFrame(transformed_items)
 
-        # tamanho do chunk
-        chunk_size = 5000 # ajuste este valor para obter o tamanho de arquivo desejado
-        chunks = [df[i:i + chunk_size] for i in range(0, df.shape[0], chunk_size)]
+        tmp_file_name = f'/tmp/{current_date}.parquet'
+        df.to_parquet(tmp_file_name, compression='GZIP')
 
-        for i, chunk in enumerate(chunks):
-            tmp_file_name = f'/tmp/{current_date}_{i}.parquet'
-            chunk.to_parquet(tmp_file_name, compression='GZIP')
-            s3.upload_file(tmp_file_name, bucket_name, f'{current_date}_{i}.parquet')
+        s3.upload_file(tmp_file_name, bucket_name, f'{current_date}.parquet')
 
         return {
             'statusCode': 200,
