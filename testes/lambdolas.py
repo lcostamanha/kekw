@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import os
 import json
-from multiprocessing.pool import ThreadPool
+import math
 
 def flatten_value(value):
     if isinstance(value, dict):
@@ -30,37 +30,36 @@ def get_description(obj):
     except (KeyError, IndexError, TypeError):
         return ''
 
-def process_data(items):
-    transformed_items = [flatten_value(item) for item in items]
-    df = pd.DataFrame(transformed_items)
-    tmp_file_name = f'/tmp/{current_date}.parquet'
-    df.to_parquet(tmp_file_name, compression='GZIP')
-    s3.upload_file(tmp_file_name, bucket_name, f'{current_date}.parquet')
-    
 def lambda_handler(event, context):
     dynamodb = boto3.client('dynamodb')
     s3 = boto3.client('s3')
     table_name = 'tbes2004_web_rgto_crdl'
     bucket_name = os.environ['BUCKET_NAME']
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-    pool = ThreadPool(processes=2)  # Ajustado para 2, de acordo com o número de vCPUs disponíveis
-    
+
     try:
         response = dynamodb.scan(TableName=table_name)
         items = response['Items']
-        
-        pool.apply_async(process_data, (items,))
-        
+
         last_evaluated_key = response.get('LastEvaluatedKey')
         while last_evaluated_key:
             response = dynamodb.scan(TableName=table_name, ExclusiveStartKey=last_evaluated_key)
-            items = response['Items']
-            pool.apply_async(process_data, (items,))
+            items.extend(response['Items'])
             last_evaluated_key = response.get('LastEvaluatedKey')
 
-        pool.close()
-        pool.join()
-        
+        transformed_items = [flatten_value(item) for item in items]
+
+        df = pd.DataFrame(transformed_items)
+
+        # tamanho do chunk
+        chunk_size = 5000 # ajuste este valor para obter o tamanho de arquivo desejado
+        chunks = [df[i:i + chunk_size] for i in range(0, df.shape[0], chunk_size)]
+
+        for i, chunk in enumerate(chunks):
+            tmp_file_name = f'/tmp/{current_date}_{i}.parquet'
+            chunk.to_parquet(tmp_file_name, compression='GZIP')
+            s3.upload_file(tmp_file_name, bucket_name, f'{current_date}_{i}.parquet')
+
         return {
             'statusCode': 200,
             'body': 'Dados salvos no S3 com sucesso.'
