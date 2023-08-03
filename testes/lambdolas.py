@@ -12,13 +12,13 @@ ARG_FORMAT = "output_format"
 PARTITION = "snapshot_timestamp"
 
 args = getResolvedOptions(sys.argv,
-  [
-    'JOB_NAME',
-    ARG_TABLE_NAME,
-    ARG_READ_PERCENT,
-    ARG_OUTPUT,
-    ARG_FORMAT
-  ]
+    [
+        'JOB_NAME',
+        ARG_TABLE_NAME,
+        ARG_READ_PERCENT,
+        ARG_OUTPUT,
+        ARG_FORMAT
+    ]
 )
 
 table_name = args[ARG_TABLE_NAME]
@@ -38,19 +38,19 @@ sc = SparkContext()
 glueContext = GlueContext(sc)
 
 table = glueContext.create_dynamic_frame.from_options(
-  "dynamodb",
-  connection_options={
-    "dynamodb.input.tableName": "tbes2004_web_rgto_crdl",  # Your DynamoDB Table Name
-    "dynamodb.throughput.read.percent": "0.5"  # Read capacity percentage
-  }
+    "dynamodb",
+    connection_options={
+        "dynamodb.input.tableName": table_name,
+        "dynamodb.throughput.read.percent": read
+    }
 )
 
 glueContext.write_dynamic_frame.from_options(
-  frame=table,
-  connection_type="s3",
-  connection_options={
-    "path": "s3://extraction-fido-dev/"  # Your S3 Bucket Name
-  },
-  format="parquet",
-  transformation_ctx="datasink"
+    frame=table,
+    connection_type="s3",
+    connection_options={
+        "path": output
+    },
+    format=fmt,
+    transformation_ctx="datasink"
 )
