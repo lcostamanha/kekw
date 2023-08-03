@@ -1,0 +1,48 @@
+GlueJobUm:
+  Type: AWS::Glue::Job
+  Properties:
+    Command:
+      Name: glueetl
+      PythonVersion: "3"
+      ScriptLocation: !Sub "s3://${GlueScriptsS3}/main.py"
+    SecurityConfiguration: !Ref GlueSecurityConfiguration
+    DefaultArguments:
+      --extra-py-files: !Sub "s3://${GlueScriptsS3}/utils/utils.zip"
+      --job-bookmark-option: "job-bookmark-disable"
+      --S3_OUTPUT_PATH: !Sub "s3://${GlueDataS3}/SOT"
+      --GLUE_INPUT_DATABASE: "datafactory"
+      --GLUE_OUTPUT_DATABASE: "datafactory"
+      --GLUE_INPUT_TABLE: !Ref DynamoDBTableName
+      --GLUE_OUTPUT_TABLE: "sot_cliente"
+    Description: Transformacao dos dados para a camada sot 1
+    ExecutionProperty:
+      MaxConcurrentRuns: 300
+    GlueVersion: "4.0"
+    Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-um"
+    Role: !Sub "${GlueRole}"
+    Timeout: 2880
+    WorkerType: G.1X
+    NumberOfWorkers: 3
+    Tags:
+      owner-team-email: !Ref OwnerTeamEmail
+      tech-team-email: !Ref TechTeamEmail
+    Connections:
+      Connections:
+        - !Ref GlueConnection
+
+GlueConnection:
+    Type: AWS::Glue::Connection
+    Description: "VPC Connection Glue"
+    Properties: 
+      CatalogId: !Ref AWS::AccountId
+      ConnectionInput:
+        ConnectionProperties:
+          Name: !Sub "${FeatureName}-${Env}-glueconnection"
+        ConnectionType: NETWORK
+        Description: Conexão de testes para o VPC
+        Name: !Sub "${FeatureName}-${Env}-glueconnection"
+        PhysicalConnectionRequirements:
+          AvailabilityZone: !Sub "${ConnectionAvailabilityZone}"
+          SecurityGroupIdList:
+            - !Sub "${ConnectionSecurityGroupId}"
+          SubnetId: !Sub "${ConnectionSubnetId}"
