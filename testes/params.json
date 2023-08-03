@@ -1,0 +1,16 @@
+{
+    "Parameters": {
+        "OwnerTeamEmail": "some-email@itau-unibanco.com.br",
+        "TechTeamEmail": "some-email@itau-unibanco.com.br",
+        "Env": "dev",
+        "GlueRole": "arn:aws:iam::428345910379:role/iamsr/glue-jobs",
+        "GlueScriptsS3": "extraction-fido-dev",
+        "GlueDataS3": "extraction-fido-dev",
+        "MicroServiceName": "fidoglue",
+        "FeatureName": "fidoglue",
+        "DynamoDBTableName": "your-dynamodb-table-name",
+        "ConnectionSecurityGroupId": "sg-0b11934fa42a9529a",
+        "ConnectionSubnetId": ["subnet-0b2e31d358786b1df", "subnet-07ea454a2890372a6", "subnet-00967fbf5a3c76e59", "subnet-09c1bdd85836e4798"],
+        "ConnectionAvailabilityZone": "sa-east-1"
+    }
+}
