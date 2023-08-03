@@ -1,42 +1,47 @@
+import sys
 import boto3
-import datetime
-import pandas as pd
-import os
+from awsglue.transforms import ApplyMapping
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.job import Job
 
-def lambda_handler(event, context):
-    dynamodb = boto3.client('dynamodb')
-    s3 = boto3.client('s3')
-    table_name = 'tbes2004_web_rgto_crdl'
-    bucket_name = os.environ['BUCKET_NAME']
-    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-    indices = ["xes20042", "xes20043", "xes20044"]
+args = getResolvedOptions(sys.argv, ["JOB_NAME"])
+sc = SparkContext()
+glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+job = Job(glueContext)
+job.init(args["JOB_NAME"], args)
 
-    try:
-        items = []
-        for index in indices:
-            response = dynamodb.query(TableName=table_name, IndexName=index)
-            items.extend(response['Items'])
+bucket_name = 'extraction-fido-dev'
+table_name = 'tbes2004_web_rgto_crdl'
 
-            last_evaluated_key = response.get('LastEvaluatedKey')
-            while last_evaluated_key:
-                response = dynamodb.query(TableName=table_name, IndexName=index, ExclusiveStartKey=last_evaluated_key)
-                items.extend(response['Items'])
-                last_evaluated_key = response.get('LastEvaluatedKey')
+# Use the DynamoDB connector for Apache Spark
+dynamodb = boto3.resource('dynamodb', region_name='sa-east-1') 
+table = dynamodb.Table(table_name)
+items = table.scan()['Items']
 
-        df = pd.DataFrame(items)
+# Convert the items to a DataFrame
+df = spark.createDataFrame(items)
 
-        tmp_file_name = f'/tmp/{current_date}.parquet'
-        df.to_parquet(tmp_file_name, compression='GZIP')
+# Print the schema of the DataFrame
+df.printSchema()
 
-        s3.upload_file(tmp_file_name, bucket_name, f'{current_date}.parquet')
+# Apply the necessary transformations
+# Change this mappings to fit your table schema
+df_transformed = ApplyMapping.apply(
+    frame = df,
+    mappings = [
+        ("cod_perf_aces", "int", "cod_perf_aces", "int"),
+        ("nom_perf_aces", "string", "nom_perf_aces", "string"),
+        ("des_perf_aces", "string", "des_perf_aces", "string")
+    ]
+)
 
-        return {
-            'statusCode': 200,
-            'body': 'Dados salvos no S3 com sucesso.'
-        }
+# Print the schema of the transformed DataFrame
+df_transformed.printSchema()
 
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'body': f'Erro ao salvar os dados no S3: {str(e)}'
-        }
+# Write the DataFrame to S3 as a parquet file
+df_transformed.write.parquet(f"s3://{bucket_name}/data/output/")
+
+job.commit()
