@@ -1,48 +1,72 @@
-GlueJobUm:
-  Type: AWS::Glue::Job
-  Properties:
-    Command:
-      Name: glueetl
-      PythonVersion: "3"
-      ScriptLocation: !Sub "s3://${GlueScriptsS3}/main.py"
-    SecurityConfiguration: !Ref GlueSecurityConfiguration
-    DefaultArguments:
-      --extra-py-files: !Sub "s3://${GlueScriptsS3}/utils/utils.zip"
-      --job-bookmark-option: "job-bookmark-disable"
-      --S3_OUTPUT_PATH: !Sub "s3://${GlueDataS3}/SOT"
-      --GLUE_INPUT_DATABASE: "datafactory"
-      --GLUE_OUTPUT_DATABASE: "datafactory"
-      --GLUE_INPUT_TABLE: !Ref DynamoDBTableName
-      --GLUE_OUTPUT_TABLE: "sot_cliente"
-    Description: Transformacao dos dados para a camada sot 1
-    ExecutionProperty:
-      MaxConcurrentRuns: 300
-    GlueVersion: "4.0"
-    Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-um"
-    Role: !Sub "${GlueRole}"
-    Timeout: 2880
-    WorkerType: G.1X
-    NumberOfWorkers: 3
-    Tags:
-      owner-team-email: !Ref OwnerTeamEmail
-      tech-team-email: !Ref TechTeamEmail
-    Connections:
-      Connections:
-        - !Ref GlueConnection
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: An AWS CloudFormation template for AWS Glue job
+Resources:
+  MyGlueSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for Glue Job.
+      VpcId: !Ref VpcId
 
-GlueConnection:
-    Type: AWS::Glue::Connection
-    Description: "VPC Connection Glue"
-    Properties: 
-      CatalogId: !Ref AWS::AccountId
-      ConnectionInput:
-        ConnectionProperties:
-          Name: !Sub "${FeatureName}-${Env}-glueconnection"
-        ConnectionType: NETWORK
-        Description: Conexão de testes para o VPC
-        Name: !Sub "${FeatureName}-${Env}-glueconnection"
-        PhysicalConnectionRequirements:
-          AvailabilityZone: !Sub "${ConnectionAvailabilityZone}"
-          SecurityGroupIdList:
-            - !Sub "${ConnectionSecurityGroupId}"
-          SubnetId: !Sub "${ConnectionSubnetId}"
+  GlueJob:
+    Type: 'AWS::Glue::Job'
+    Properties:
+      Command:
+        Name: glueetl
+        ScriptLocation: !Ref GlueJobScriptLocation
+        PythonVersion: '3'
+      DefaultArguments:
+        '--TempDir': !Ref TempDir
+        '--enable-continuous-cloudwatch-log': 'true'
+        '--enable-continuous-log-filter': 'true'
+      ExecutionProperty:
+        MaxConcurrentRuns: 1
+      MaxRetries: 0
+      Name: !Ref GlueJobName
+      Role: !Ref GlueExecutionRole
+      SecurityConfiguration: !Ref GlueSecurityConfiguration
+      WorkerType: Standard
+      NumberOfWorkers: 10
+
+  GlueSecurityConfiguration:
+    Type: 'AWS::Glue::SecurityConfiguration'
+    Properties:
+      Name: !Ref GlueSecurityConfigurationName
+      EncryptionConfiguration:
+        S3Encryption:
+          - S3EncryptionMode: SSEC
+            KmsKeyArn: !Ref KMSKeyARN
+
+Parameters:
+  VpcId:
+    Type: String
+    Description: 'VPC ID'
+
+  GlueJobScriptLocation:
+    Type: String
+    Description: 'The S3 location of the Glue Job script'
+    
+  TempDir:
+    Type: String
+    Description: 'The S3 location for the temp directory'
+    
+  GlueJobName:
+    Type: String
+    Description: 'The name of the Glue Job'
+
+  GlueExecutionRole:
+    Type: String
+    Description: 'The role for the Glue Job to assume'
+
+  GlueSecurityConfigurationName:
+    Type: String
+    Description: 'The name of the Glue security configuration'
+
+  KMSKeyARN:
+    Type: String
+    Description: 'The ARN of the KMS key used for S3 server-side encryption'
+
+Outputs:
+  GlueJobName:
+    Description: 'Name of the Glue job'
+    Value: !Ref GlueJobName
