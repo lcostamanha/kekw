@@ -1,56 +1,38 @@
 import sys
-import datetime
+from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
+from awsglue.job import Job
 
-ARG_TABLE_NAME = "table_name"
-ARG_READ_PERCENT = "read_percentage"
-ARG_OUTPUT = "output_prefix"
-ARG_FORMAT = "output_format"
-
-PARTITION = "snapshot_timestamp"
-
-args = getResolvedOptions(sys.argv,
-    [
-        'JOB_NAME',
-        ARG_TABLE_NAME,
-        ARG_READ_PERCENT,
-        ARG_OUTPUT,
-        ARG_FORMAT
-    ]
-)
-
-table_name = args[ARG_TABLE_NAME]
-read = args[ARG_READ_PERCENT]
-output_prefix = args[ARG_OUTPUT]
-fmt = args[ARG_FORMAT]
-
-print("Table name:", table_name)
-print("Read percentage:", read)
-print("Output prefix:", output_prefix)
-print("Format:", fmt)
-
-date_str = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
-output = "%s/%s=%s" % (output_prefix, PARTITION, date_str)
+args = getResolvedOptions(sys.argv, ["JOB_NAME"])
 
 sc = SparkContext()
 glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+job = Job(glueContext)
+job.init(args["JOB_NAME"], args)
 
-table = glueContext.create_dynamic_frame.from_options(
-    "dynamodb",
+# Define your DynamoDB table name
+table_name = "tbes2004_web_rgto_crdl"
+# Define your output path
+output_path = "s3://extraction-fido-dev/glue/"
+
+# Reading data from DynamoDB
+dynamodb_df = glueContext.create_dynamic_frame.from_options(
+    connection_type="dynamodb",
     connection_options={
         "dynamodb.input.tableName": table_name,
-        "dynamodb.throughput.read.percent": read
+        "dynamodb.throughput.read.percent": "1.0"
     }
 )
 
+# Write the data to S3 in parquet format
 glueContext.write_dynamic_frame.from_options(
-    frame=table,
+    frame=dynamodb_df,
     connection_type="s3",
-    connection_options={
-        "path": output
-    },
-    format=fmt,
-    transformation_ctx="datasink"
+    connection_options={"path": output_path},
+    format="parquet"
 )
+
+job.commit()
