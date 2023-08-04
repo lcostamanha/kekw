@@ -18,7 +18,7 @@ ddb_frame = glueContext.create_dynamic_frame.from_options(
         "dynamodb.input.tableName": "tbes2004_web_rgto_crdl",
         "dynamodb.throughput.read.percent": "0.5",
         "dynamodb.splits": "100",
-    },
+    }
 )
 
 # Writing data to S3
