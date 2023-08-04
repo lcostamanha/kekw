@@ -3,13 +3,11 @@ Parameters:
   Env:
     Type: String
     Description: Ambiente
-    AllowedValues: ["dev", "hom", "prd"]
+    AllowedValues: [ "dev", "hom", "prod" ]
   FeatureName:
     Type: String
-    Description: Nome da feature
   MicroServiceName:
     Type: String
-    Description: Nome do micro serviço
   GlueRole:
     Description: Nome da role que o Glue ira utilizar. Deve possuir a policy GlueServiceRole
     Type: String
@@ -19,75 +17,172 @@ Parameters:
   GlueDataS3:
     Description: Nome do bucket s3 onde os dados do Glue estão.
     Type: String
+  ArnKMSS3:
+    Description: ARN de encriptografia do KMS utilizado no Bucket S3.
+    Type: String
+  OwnerTeamEmail:
+    Description: Email Owner Team.
+    Type: String
+  TechTeamEmail:
+    Description: Email Tech Team.
+    Type: String
+  DataBaseName:
+    Description: Nome da base de dados.
+    Type: String
+  FolderOutput:
+    Description: Pasta onde será armazenado o arquivo de saída
+    Type: String
+  WorkgroupAthena:
+    Description: WorkGroup onde será executado a consulta no Athena
+    Type: String
+  GlueDataTempS3:
+    Description: Bucket temporário onde é salvo o arquivo com o resultado da consulta do Athena
+    Type: String
+  EnableTriggerGlue:
+    Description: Habilitar/Desabilitar Trigger para executar o job
+    Type: String
+    "AllowedValues": [
+      "true",
+      "false"
+    ]
+  FileNameOutput:
+    Description: Nome do arquivo de saída
+    Type: String
+  SecurityGroupId:
+    Description: Nome do SG com regra para saída externa
+    Type: String
+  SubnetIdA:
+    Description: ID da Subnet da Zona A para saída externa
+    Type: String
+  SubnetIdB:
+    Description: ID da Subnet da Zona B para saída externa
+    Type: String
+  SubnetIdC:
+    Description: ID da Subnet da Zona C para saída externa
+    Type: String
 
 Resources:
   KmsKey:
     Type: AWS::KMS::Key
-    Properties: 
-      Description: !Sub "${FeatureName}-${MicroServiceName}-${Env}-kms-key"
+    Properties:
+      Description: "${FeatureName}-${MicroServiceName}-${Env}-kms-key"
       Enabled: true
       EnableKeyRotation: true
-      KeyPolicy: 
+      KeyPolicy:
         Version: 2012-10-17
-        Id: !Sub "key-{FeatureName}-${MicroServiceName}-${Env}-id"
+        Id: "$key-{FeatureName}-${MicroServiceName}-${Env}-id"
         Statement:
           - Sid: Enable IAM User Permissions
             Effect: Allow
             Principal:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: 'kms:*'
-            Resource: '*'
+            Action: "kms:*"
+            Resource: "*"
           - Effect: Allow
             Principal:
               Service: !Sub "logs.${AWS::Region}.amazonaws.com"
             Action:
-              - 'kms:Encrypt*'
-              - 'kms:Decrypt*'
-              - 'kms:ReEncrypt*'
-              - 'kms:GenerateDataKey*'
-              - 'kms:Describe*'
-            Resource: '*'
-
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: "*"
   GlueSecurityConfiguration:
     Type: AWS::Glue::SecurityConfiguration
     DependsOn: KmsKey
-    Properties: 
-      EncryptionConfiguration: 
-        CloudWatchEncryption: 
+    Properties:
+      EncryptionConfiguration:
+        CloudWatchEncryption:
           CloudWatchEncryptionMode: SSE-KMS
           KmsKeyArn: !GetAtt KmsKey.Arn
-        JobBookmarksEncryption: 
+        JobBookmarksEncryption:
           JobBookmarksEncryptionMode: CSE-KMS
           KmsKeyArn: !GetAtt KmsKey.Arn
-        S3Encryptions: 
+        S3Encryptions:
           - S3EncryptionMode: SSE-KMS
-            KmsKeyArn: !GetAtt KmsKey.Arn
+            KmsKeyArn: !Sub "${ArnKMSS3}"
       Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-security-configuration"
-
-  GlueJobUm:
+  SubNetZoneA:
+    Type: AWS::Glue::Connection
+    Properties:
+      CatalogId: !Sub "${AWS::AccountId}"
+      ConnectionInput:
+        ConnectionType: NETWORK
+        Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-SubNetZoneA"
+        PhysicalConnectionRequirements:
+          AvailabilityZone: "sa-east-1a"
+          SecurityGroupIdList:
+            - !Ref SecurityGroupId
+          SubnetId: !Ref SubnetIdA
+  SubNetZoneB:
+    Type: AWS::Glue::Connection
+    Properties:
+      CatalogId: !Sub "${AWS::AccountId}"
+      ConnectionInput:
+        ConnectionType: NETWORK
+        Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-SubNetZoneB"
+        PhysicalConnectionRequirements:
+          AvailabilityZone: "sa-east-1b"
+          SecurityGroupIdList:
+            - !Ref SecurityGroupId
+          SubnetId: !Ref SubnetIdB
+  SubNetZoneC:
+    Type: AWS::Glue::Connection
+    Properties:
+      CatalogId: !Sub "${AWS::AccountId}"
+      ConnectionInput:
+        ConnectionType: NETWORK
+        Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-SubNetZoneC"
+        PhysicalConnectionRequirements:
+          AvailabilityZone: "sa-east-1c"
+          SecurityGroupIdList:
+            - !Ref SecurityGroupId
+          SubnetId: !Ref SubnetIdC
+  GlueJob:
     Type: AWS::Glue::Job
     Properties:
       Command:
-        Name: glueetl
-        PythonVersion: "3"
-        ScriptLocation: !Sub "s3://${GlueScriptsS3}/src/main.py"
+        Name: pythonshell
+        PythonVersion: "3.9"
+        ScriptLocation: !Sub "s3://${GlueScriptsS3}/src/operacoesgirosaldos/main.py"
+      Connections:
+        Connections:
+          - !Ref SubNetZoneA
+          - !Ref SubNetZoneB
+          - !Ref SubNetZoneC
       SecurityConfiguration: !Ref GlueSecurityConfiguration
       DefaultArguments:
         --job-bookmark-option: "job-bookmark-disable"
-        --S3_OUTPUT_PATH: !Sub "s3://${GlueDataS3}/SOT"
-        --GLUE_INPUT_DATABASE: "datafactory"
-        --GLUE_OUTPUT_DATABASE: "datafactory"
-        --GLUE_INPUT_TABLE: "sor_cliente"
-        --GLUE_OUTPUT_TABLE: "sot_cliente"
-      Description: Transformacao dos dados para a camada sot 1
+        --GLUE_DATABASE: !Sub "${DataBaseName}"
+        --JOB_NAME: !Sub "${MicroServiceName}"
+        --WORKGROUP_ATHENA: !Sub "${WorkgroupAthena}"
+        --S3_OUTPUT: !Sub "${GlueDataS3}"
+        --S3_TEMP: !Sub "${GlueDataTempS3}"
+        --FOLDER_OUTPUT: !Sub "${FolderOutput}"
+        --FILE_NAME_OUTPUT: !Sub "${FileNameOutput}"
+        --extra-files: !Sub "s3://${GlueScriptsS3}/src/operacoesgirosaldos/AthenaClient.py,
+        s3://${GlueScriptsS3}/src/operacoesgirosaldos/FormatterFile.py,
+        s3://${GlueScriptsS3}/src/operacoesgirosaldos/S3Client.py,
+        s3://${GlueScriptsS3}/src/operacoesgirosaldos/Logger.py"
+      Description: Create file SF3.BASE.B0DZ01 from tables DataMesh, write S3
       ExecutionProperty:
         MaxConcurrentRuns: 300
-      GlueVersion: "2.0" # Alterado para 2.0 para compatibilidade
-      Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-um"
+      GlueVersion: "3.0"
+      Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}"
       Role: !Sub "${GlueRole}"
-      Timeout: 2880
-      WorkerType: G.1X
-      NumberOfWorkers: 3
+      Timeout: 120
+      MaxCapacity: 1
       Tags:
-        owner-team-email: "some-email@itau-unibanco.com.br"
-        tech-team-email: "some-email@itau-unibanco.com.br"
+        owner-team-email: !Ref OwnerTeamEmail
+        tech-team-email: !Ref TechTeamEmail
+  GlueStartTriggerJob:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-glue-trigger"
+      Type: SCHEDULED
+      Schedule: cron(0 23 ? * MON-FRI *)
+      StartOnCreation: !Sub "${EnableTriggerGlue}"
+      Description: Trigger para iniciar job de geração do arquivo SF3.BASE.B0DZ01
+      Actions:
+        - JobName: !Ref GlueJob
