@@ -1,72 +1,93 @@
----
-AWSTemplateFormatVersion: '2010-09-09'
-Description: An AWS CloudFormation template for AWS Glue job
-Resources:
-  MyGlueSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupDescription: Security Group for Glue Job.
-      VpcId: !Ref VpcId
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Env:
+    Type: String
+    Description: Ambiente
+    AllowedValues: ["dev", "hom", "prd"]
+  FeatureName:
+    Type: String
+    Description: Nome da feature
+  MicroServiceName:
+    Type: String
+    Description: Nome do micro serviço
+  GlueRole:
+    Description: Nome da role que o Glue ira utilizar. Deve possuir a policy GlueServiceRole
+    Type: String
+  GlueScriptsS3:
+    Description: Nome do bucket s3 onde os scrips Glue estão.
+    Type: String
+  GlueDataS3:
+    Description: Nome do bucket s3 onde os dados do Glue estão.
+    Type: String
 
-  GlueJob:
-    Type: 'AWS::Glue::Job'
+Resources:
+  KmsKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: !Sub "${FeatureName}-${MicroServiceName}-${Env}-kms-key"
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy: 
+        Version: 2012-10-17
+        Id: !Sub "key-{FeatureName}-${MicroServiceName}-${Env}-id"
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: 'kms:*'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action:
+              - 'kms:Encrypt*'
+              - 'kms:Decrypt*'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:Describe*'
+            Resource: '*'
+
+  GlueSecurityConfiguration:
+    Type: AWS::Glue::SecurityConfiguration
+    DependsOn: KmsKey
+    Properties: 
+      EncryptionConfiguration: 
+        CloudWatchEncryption: 
+          CloudWatchEncryptionMode: SSE-KMS
+          KmsKeyArn: !GetAtt KmsKey.Arn
+        JobBookmarksEncryption: 
+          JobBookmarksEncryptionMode: CSE-KMS
+          KmsKeyArn: !GetAtt KmsKey.Arn
+        S3Encryptions: 
+          - S3EncryptionMode: SSE-KMS
+            KmsKeyArn: !GetAtt KmsKey.Arn
+      Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-security-configuration"
+
+  GlueJobUm:
+    Type: AWS::Glue::Job
     Properties:
       Command:
         Name: glueetl
-        ScriptLocation: !Ref GlueJobScriptLocation
-        PythonVersion: '3'
-      DefaultArguments:
-        '--TempDir': !Ref TempDir
-        '--enable-continuous-cloudwatch-log': 'true'
-        '--enable-continuous-log-filter': 'true'
-      ExecutionProperty:
-        MaxConcurrentRuns: 1
-      MaxRetries: 0
-      Name: !Ref GlueJobName
-      Role: !Ref GlueExecutionRole
+        PythonVersion: "3"
+        ScriptLocation: !Sub "s3://${GlueScriptsS3}/src/main.py"
       SecurityConfiguration: !Ref GlueSecurityConfiguration
-      WorkerType: Standard
-      NumberOfWorkers: 10
-
-  GlueSecurityConfiguration:
-    Type: 'AWS::Glue::SecurityConfiguration'
-    Properties:
-      Name: !Ref GlueSecurityConfigurationName
-      EncryptionConfiguration:
-        S3Encryption:
-          - S3EncryptionMode: SSEC
-            KmsKeyArn: !Ref KMSKeyARN
-
-Parameters:
-  VpcId:
-    Type: String
-    Description: 'VPC ID'
-
-  GlueJobScriptLocation:
-    Type: String
-    Description: 'The S3 location of the Glue Job script'
-    
-  TempDir:
-    Type: String
-    Description: 'The S3 location for the temp directory'
-    
-  GlueJobName:
-    Type: String
-    Description: 'The name of the Glue Job'
-
-  GlueExecutionRole:
-    Type: String
-    Description: 'The role for the Glue Job to assume'
-
-  GlueSecurityConfigurationName:
-    Type: String
-    Description: 'The name of the Glue security configuration'
-
-  KMSKeyARN:
-    Type: String
-    Description: 'The ARN of the KMS key used for S3 server-side encryption'
-
-Outputs:
-  GlueJobName:
-    Description: 'Name of the Glue job'
-    Value: !Ref GlueJobName
+      DefaultArguments:
+        --job-bookmark-option: "job-bookmark-disable"
+        --S3_OUTPUT_PATH: !Sub "s3://${GlueDataS3}/SOT"
+        --GLUE_INPUT_DATABASE: "datafactory"
+        --GLUE_OUTPUT_DATABASE: "datafactory"
+        --GLUE_INPUT_TABLE: "sor_cliente"
+        --GLUE_OUTPUT_TABLE: "sot_cliente"
+      Description: Transformacao dos dados para a camada sot 1
+      ExecutionProperty:
+        MaxConcurrentRuns: 300
+      GlueVersion: "2.0" # Alterado para 2.0 para compatibilidade
+      Name: !Sub "${FeatureName}-${MicroServiceName}-${Env}-um"
+      Role: !Sub "${GlueRole}"
+      Timeout: 2880
+      WorkerType: G.1X
+      NumberOfWorkers: 3
+      Tags:
+        owner-team-email: "some-email@itau-unibanco.com.br"
+        tech-team-email: "some-email@itau-unibanco.com.br"
