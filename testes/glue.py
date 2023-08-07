@@ -33,9 +33,7 @@ class GlueJob:
             frame=frame,
             connection_type="s3",
             format="parquet",
-            connection_options={
-                "path": s3_path
-            }
+            connection_options={"path": s3_path}
         )
 
     def process(self, table_name, s3_path):
@@ -54,7 +52,8 @@ def main():
 
     # Gerar caminho com estrutura de data
     current_date = datetime.now()
-    s3_path = f"s3://itau-corp-sor-sa-east-1-428345910379/glue/{current_date.year}/{current_date.month}/{current_date.day}/"
+    s3_path = (f"s3://itau-corp-sor-sa-east-1-428345910379/glue/"
+               f"{current_date.year}/{current_date.month}/{current_date.day}/")
     
     glue_job.process(table_name, s3_path)
     glue_job.commit()
