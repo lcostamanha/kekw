@@ -3,10 +3,10 @@ from awsglue.transforms import ApplyMapping
 from awsglue.utils import getResolvedOptions
 from awsglue.dynamicframe import DynamicFrame
 from pyspark.context import SparkContext
-from pyspark.sql.types import StructField, StructType, StringType
 from awsglue.context import GlueContext
 from awsglue.job import Job
 import boto3
+from datetime import datetime
 
 
 class GlueJob:
@@ -49,8 +49,13 @@ class GlueJob:
 def main():
     args = getResolvedOptions(sys.argv, ["JOB_NAME"])
     glue_job = GlueJob(args)
+    
     table_name = "tbes2004_web_rgto_crdl"
-    s3_path = "s3://itau-corp-sor-sa-east-1-428345910379/glue/"
+
+    # Gerar caminho com estrutura de data
+    current_date = datetime.now()
+    s3_path = f"s3://itau-corp-sor-sa-east-1-428345910379/glue/{current_date.year}/{current_date.month}/{current_date.day}/"
+    
     glue_job.process(table_name, s3_path)
     glue_job.commit()
 
