@@ -1,5 +1,4 @@
 import sys
-from awsglue.transforms import ApplyMapping
 from awsglue.utils import getResolvedOptions
 from awsglue.dynamicframe import DynamicFrame
 from pyspark.context import SparkContext
