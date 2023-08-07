@@ -25,7 +25,9 @@ ddb_frame = glueContext.create_dynamic_frame.from_options(
 glueContext.write_dynamic_frame.from_options(
     frame=ddb_frame,
     connection_type="s3",
-    connection_options={"path": "s3://itau-corp-sor-sa-east-1-428345910379/glue/"},
+    connection_options={
+        "path": "s3://itau-corp-sor-sa-east-1-428345910379/glue/"
+    },
     format="parquet",
 )
 
