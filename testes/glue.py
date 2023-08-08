@@ -2,7 +2,6 @@ import sys
 from datetime import datetime
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
-from awsglue.dynamicframe import DynamicFrame
 from awsglue.utils import getResolvedOptions
 from awsglue.job import Job
 
@@ -14,18 +13,28 @@ class GlueJob:
         self.job.init(args["JOB_NAME"], args)
 
     def read_from_dynamo(self, table_name):
-        dynamo_frame = self.glueContext.create_dynamic_frame.from_catalog(
-            database="your_database_name", table_name=table_name)
-        return dynamo_frame.toDF()
+        return self.glueContext.create_dynamic_frame.from_options(
+            connection_type="dynamodb",
+            connection_options={
+                "dynamodb.input.tableName": table_name,
+                "dynamodb.throughput.read.percent": "1.0",
+                "dynamodb.splits": "1"
+            }
+        )
 
-    def write_to_s3(self, dataframe, s3_path):
-        dataframe.write.parquet(s3_path)
+    def write_to_s3(self, dynamic_frame, s3_path):
+        self.glueContext.write_dynamic_frame.from_options(
+            frame=dynamic_frame,
+            connection_type="s3",
+            format="parquet",
+            connection_options={"path": s3_path}
+        )
 
     def process(self, table_name, s3_base_path):
-        df_items = self.read_from_dynamo(table_name)
+        dynamo_frame = self.read_from_dynamo(table_name)
         current_date = datetime.now().strftime("%Y%m%d")
         s3_path = f"{s3_base_path}/anomesdia={current_date}/"
-        self.write_to_s3(df_items, s3_path)
+        self.write_to_s3(dynamo_frame, s3_path)
 
     def commit(self):
         self.job.commit()
