@@ -27,7 +27,7 @@ class GlueJob:
 
     def handle_incompatible_types(self, df):
         json_rdd = df.toJSON()
-        return self.spark.read.json(json_rdd.rdd)
+        return self.spark.read.json(json_rdd)
 
     def write_to_s3(self, frame, s3_bucket):
         df = frame.toDF()
