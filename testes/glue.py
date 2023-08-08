@@ -17,13 +17,9 @@ class GlueJob:
         self.s3_client = boto3.client("s3")
 
     def read_from_dynamo(self, table_name):
-        return self.glueContext.create_dynamic_frame.from_options(
-            connection_type="dynamodb",
-            connection_options={
-                "dynamodb.input.tableName": table_name,
-                "dynamodb.throughput.read.percent": "1.0",
-                "dynamodb.splits": "1",
-            }
+        return self.glueContext.create_dynamic_frame.from_catalog(
+            database="your-database-name",
+            table_name=table_name
         )
 
     def write_to_s3(self, dynamic_frame, s3_bucket):
@@ -36,7 +32,7 @@ class GlueJob:
         df = df.withColumn('day', df.current_date.substr(9, 2))
         s3_path = (f"s3://{s3_bucket}/data/"
                    f"year={df.year}/month={df.month}/day={df.day}/")
-        df_partitioned = self.glueContext.create_dynamic_frame.fromDF(
+        df_partitioned = DynamicFrame.fromDF(
             df, self.glueContext, "df_partitioned")
         self.glueContext.write_dynamic_frame.from_options(
             frame=df_partitioned,
