@@ -36,8 +36,8 @@ class GlueJob:
         year_val, month_val, day_val = (current_date.year, 
                                         current_date.month, 
                                         current_date.day)
-        path = (f"s3://{s3_bucket}/glue/year={year_val}/"
-                f"month={month_val}/day={day_val}/")
+        path = (f"s3://{s3_bucket}/tb_fido/{year_val:04d}/"
+                f"{month_val:02d}/{day_val:02d}/")
         df.write.parquet(path)
 
     def process(self, table_name, s3_bucket):
