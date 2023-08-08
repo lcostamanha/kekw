@@ -18,16 +18,20 @@ class GlueJob:
 
     def read_from_dynamo(self, table_name):
         return self.glueContext.create_dynamic_frame.from_options(
-            "dynamodb",
-            {
+            "dynamodb", {
                 "dynamodb.input.tableName": table_name,
                 "dynamodb.throughput.read.percent": "1.0",
                 "dynamodb.splits": "10"
             }
         )
 
+    def handle_incompatible_types(self, df):
+        json_rdd = df.toJSON()
+        return self.spark.read.json(json_rdd.rdd)
+
     def write_to_s3(self, frame, s3_bucket):
         df = frame.toDF()
+        df = self.handle_incompatible_types(df)
         current_date = datetime.now()
         year_val, month_val, day_val = (current_date.year, 
                                         current_date.month, 
