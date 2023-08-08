@@ -8,6 +8,7 @@ from awsglue.job import Job
 import boto3
 from datetime import datetime
 
+
 class GlueJob:
     def __init__(self, args):
         self.sc = SparkContext()
@@ -37,7 +38,10 @@ class GlueJob:
 
     def write_to_s3(self, frame, s3_path):
         partitioned_frame = self.add_partition_cols(frame)
-        s3_path_with_partition = f"{s3_path}{datetime.now().year}/{datetime.now().month}/{datetime.now().day}/"
+        s3_path_with_partition = (
+            f"{s3_path}{datetime.now().year}/"
+            f"{datetime.now().month}/{datetime.now().day}/"
+        )
         self.glueContext.write_dynamic_frame.from_options(
             frame=partitioned_frame,
             connection_type="s3",
@@ -54,6 +58,7 @@ class GlueJob:
     def commit(self):
         self.job.commit()
 
+
 def main():
     args = getResolvedOptions(sys.argv, ["JOB_NAME"])
     glue_job = GlueJob(args)
@@ -61,6 +66,7 @@ def main():
     s3_path = "s3://itau-corp-sor-sa-east-1-428345910379/glue/"
     glue_job.process(table_name, s3_path)
     glue_job.commit()
+
 
 if __name__ == "__main__":
     main()
