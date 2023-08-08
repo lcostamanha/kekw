@@ -3,7 +3,9 @@ import boto3
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
-from pyspark.sql.functions import year, month, dayofmonth
+from awsglue.utils import getResolvedOptions
+from datetime import datetime
+
 
 class GlueJob:
     def __init__(self, args):
@@ -17,18 +19,21 @@ class GlueJob:
     def read_from_dynamo(self, table_name):
         return self.glueContext.create_dynamic_frame.from_options(
             "dynamodb",
-            {"dynamodb.input.tableName": table_name,
-             "dynamodb.throughput.read.percent": "1.0",
-             "dynamodb.splits": "10"}
+            {
+                "dynamodb.input.tableName": table_name,
+                "dynamodb.throughput.read.percent": "1.0",
+                "dynamodb.splits": "10"
+            }
         )
 
     def write_to_s3(self, frame, s3_bucket):
         df = frame.toDF()
-        df = df.withColumn("year", year(df["your_date_column"]))
-        df = df.withColumn("month", month(df["your_date_column"]))
-        df = df.withColumn("day", dayofmonth(df["your_date_column"]))
-
-        path = f"s3://{s3_bucket}/glue/year={df['year']}/month={df['month']}/day={df['day']}/"
+        current_date = datetime.now()
+        year_val, month_val, day_val = (current_date.year, 
+                                        current_date.month, 
+                                        current_date.day)
+        path = (f"s3://{s3_bucket}/glue/year={year_val}/"
+                f"month={month_val}/day={day_val}/")
         df.write.parquet(path)
 
     def process(self, table_name, s3_bucket):
@@ -38,6 +43,7 @@ class GlueJob:
     def commit(self):
         self.job.commit()
 
+
 def main():
     args = getResolvedOptions(sys.argv, ["JOB_NAME"])
     glue_job = GlueJob(args)
@@ -45,6 +51,7 @@ def main():
     s3_bucket = "itau-corp-sor-sa-east-1-428345910379"
     glue_job.process(table_name, s3_bucket)
     glue_job.commit()
+
 
 if __name__ == "__main__":
     main()
