@@ -1,11 +1,12 @@
 import sys
+from awsglue.transforms import ApplyMapping
 from awsglue.utils import getResolvedOptions
+from awsglue.dynamicframe import DynamicFrame
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 import boto3
 from datetime import datetime
-
 
 class GlueJob:
     def __init__(self, args):
@@ -15,12 +16,6 @@ class GlueJob:
         self.job = Job(self.glueContext)
         self.job.init(args["JOB_NAME"], args)
         self.s3_client = boto3.client("s3")
-
-    def add_partition_cols(self, dynamic_frame):
-        current_date = datetime.now()
-        return dynamic_frame.withColumn("year", current_date.year)\
-                            .withColumn("month", current_date.month)\
-                            .withColumn("day", current_date.day)
 
     def read_from_dynamo(self, table_name):
         return self.glueContext.create_dynamic_frame.from_options(
@@ -32,25 +27,32 @@ class GlueJob:
             }
         )
 
+    def add_partition_cols(self, dynamic_frame):
+        current_date = datetime.now()
+        df = dynamic_frame.toDF()
+        df = df.withColumn("year", current_date.year)\
+               .withColumn("month", current_date.month)\
+               .withColumn("day", current_date.day)
+        return DynamicFrame.fromDF(df, self.glueContext, "partitioned_frame")
+
     def write_to_s3(self, frame, s3_path):
+        partitioned_frame = self.add_partition_cols(frame)
+        s3_path_with_partition = f"{s3_path}{datetime.now().year}/{datetime.now().month}/{datetime.now().day}/"
         self.glueContext.write_dynamic_frame.from_options(
-            frame=frame,
+            frame=partitioned_frame,
             connection_type="s3",
             format="parquet",
             connection_options={
-                "path": s3_path,
-                "partitionKeys": ["year", "month", "day"]
+                "path": s3_path_with_partition
             }
         )
 
     def process(self, table_name, s3_path):
         df_items = self.read_from_dynamo(table_name)
-        df_items = self.add_partition_cols(df_items)
         self.write_to_s3(df_items, s3_path)
 
     def commit(self):
         self.job.commit()
-
 
 def main():
     args = getResolvedOptions(sys.argv, ["JOB_NAME"])
@@ -60,21 +62,5 @@ def main():
     glue_job.process(table_name, s3_path)
     glue_job.commit()
 
-
 if __name__ == "__main__":
     main()
-
-
-def add_partition_cols(self, dynamic_frame):
-    current_date = datetime.now()
-    
-    # Convert the DynamicFrame to a Spark DataFrame
-    df = dynamic_frame.toDF()
-
-    # Add the partition columns
-    df = df.withColumn("year", current_date.year)\
-           .withColumn("month", current_date.month)\
-           .withColumn("day", current_date.day)
-
-    # Convert back to DynamicFrame
-    return DynamicFrame.fromDF(df, self.glueContext, "partitioned_frame")
