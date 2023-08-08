@@ -63,3 +63,18 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def add_partition_cols(self, dynamic_frame):
+    current_date = datetime.now()
+    
+    # Convert the DynamicFrame to a Spark DataFrame
+    df = dynamic_frame.toDF()
+
+    # Add the partition columns
+    df = df.withColumn("year", current_date.year)\
+           .withColumn("month", current_date.month)\
+           .withColumn("day", current_date.day)
+
+    # Convert back to DynamicFrame
+    return DynamicFrame.fromDF(df, self.glueContext, "partitioned_frame")
