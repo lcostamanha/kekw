@@ -6,6 +6,7 @@ from awsglue.utils import getResolvedOptions
 from awsglue.job import Job
 import boto3
 
+
 class GlueJob:
     def __init__(self, args):
         self.sc = SparkContext()
@@ -32,8 +33,8 @@ class GlueJob:
             connection_options={"path": s3_path}
         )
 
-    def create_partition(self, database_name, table_name, s3_path, partition_value,
-                         table_data):
+    def create_partition(self, database_name, table_name, s3_path,
+                         partition_value, table_data):
         try:
             self.glue_client.create_partition(
                 DatabaseName=database_name,
@@ -64,36 +65,46 @@ class GlueJob:
             sys.exit(-1)
 
         table_data = {}
-        table_data['input_format'] = response['Table']['StorageDescriptor']['InputFormat']
-        table_data['output_format'] = response['Table']['StorageDescriptor']['OutputFormat']
-        table_data['table_location'] = response['Table']['StorageDescriptor']['Location']
-        table_data['serde_info'] = response['Table']['StorageDescriptor']['SerdeInfo']
+        table_data['input_format'] = \
+            response['Table']['StorageDescriptor']['InputFormat']
+        table_data['output_format'] = \
+            response['Table']['StorageDescriptor']['OutputFormat']
+        table_data['table_location'] = \
+            response['Table']['StorageDescriptor']['Location']
+        table_data['serde_info'] = \
+            response['Table']['StorageDescriptor']['SerdeInfo']
         table_data['partition_keys'] = response['Table']['PartitionKeys']
+
         return table_data
 
-    def process(self, table_name, s3_base_path, database_name, glue_table_name,
-                CatalogId):
+    def process(self, table_name, s3_base_path, database_name,
+                glue_table_name, CatalogId):
         dynamo_frame = self.read_from_dynamo(table_name)
         current_date = datetime.now().strftime("%Y%m%d")
         s3_path = f"{s3_base_path}/anomesdia={current_date}/"
-        table_data = self.get_table_schema(CatalogId, database_name, glue_table_name)
+        table_data = self.get_table_schema(CatalogId, database_name,
+                                           glue_table_name)
         self.write_to_s3(dynamo_frame, s3_path)
-        self.create_partition(database_name, glue_table_name, s3_path, current_date,
-                              table_data)
+        self.create_partition(database_name, glue_table_name, s3_path,
+                              current_date, table_data)
 
     def commit(self):
         self.job.commit()
 
+
 def main():
-    args = getResolvedOptions(sys.argv, ["JOB_NAME", "CatalogIdControl", "BKT_DEST"])
+    args = getResolvedOptions(sys.argv, ["JOB_NAME", "CatalogIdControl",
+                                         "BKT_DEST"])
     CatalogId = args["CatalogIdControl"]
     glue_job = GlueJob(args)
     table_name = "tbes2004_web_rgto_crdl"
     s3_path = "s3://{BKT}/tb_fido".format(BKT=args["BKT_DEST"])
     database_name = "db_source_identificacaoeautenticacaodeclientes_customeriam_sor_01"
     glue_table_name = "tb_fido"
-    glue_job.process(table_name, s3_path, database_name, glue_table_name, CatalogId)
+    glue_job.process(table_name, s3_path, database_name, glue_table_name,
+                     CatalogId)
     glue_job.commit()
+
 
 if __name__ == "__main__":
     main()
