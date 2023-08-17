@@ -102,10 +102,10 @@ def main():
     database_name = \
         "db_source_identificacaoeautenticacaodeclientes_customeriam_sor_01"
     glue_table_name = "tb_fido"
+    table_name = "YOUR_DYNAMODB_TABLE_NAME"  # Substitua com o nome correto
     glue_job.process(table_name, s3_path, database_name, glue_table_name,
                      CatalogId)
     glue_job.commit()
-
 
 if __name__ == "__main__":
     main()
