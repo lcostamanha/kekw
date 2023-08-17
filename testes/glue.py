@@ -96,9 +96,10 @@ def main():
     args = getResolvedOptions(sys.argv, ["JOB_NAME", "CatalogIdControl",
                                          "BKT_DEST"])
     CatalogId = args["CatalogIdControl"]
+    bkt_dest = args["BKT_DEST"]
+    s3_path = f"s3://{bkt_dest}/tb_fido"
     glue_job = GlueJob(args)
     table_name = "tbes2004_web_rgto_crdl"
-    s3_path = "s3://{BKT}/tb_fido".format(BKT=args["BKT_DEST"])
     database_name = "db_source_identificacaoeautenticacaodeclientes_customeriam_sor_01"
     glue_table_name = "tb_fido"
     glue_job.process(table_name, s3_path, database_name, glue_table_name,
