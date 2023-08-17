@@ -60,7 +60,7 @@ class GlueJob:
                 DatabaseName=database_name,
                 Name=table_name
             )
-        except Exception as error:
+            print(f"Exception while fetching table info: {error}")
             print("Exception while fetching table info")
             sys.exit(-1)
 
@@ -100,11 +100,7 @@ def main():
     s3_path = f"s3://{bkt_dest}/tb_fido"
     glue_job = GlueJob(args)
     table_name = "tbes2004_web_rgto_crdl"
-    database_name = (
-        "db_source_identificacaoeautenticacaodeclientes_"
-        "customeriam_sor_01"
-    )
-    glue_table_name = "tb_fido"
+    database_name ="db_source_identificacaoeautenticacaodeclientes_customeriam_sor_01"    glue_table_name = "tb_fido"
     glue_job.process(table_name, s3_path, database_name, glue_table_name,
                      CatalogId)
     glue_job.commit()
