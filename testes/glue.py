@@ -60,21 +60,21 @@ class GlueJob:
                 DatabaseName=database_name,
                 Name=table_name
             )
+        except Exception as error:
             print(f"Exception while fetching table info: {error}")
-            print("Exception while fetching table info")
             sys.exit(-1)
 
-        table_data = {}
-        table_data['input_format'] = \
-            response['Table']['StorageDescriptor']['InputFormat']
-        table_data['output_format'] = \
-            response['Table']['StorageDescriptor']['OutputFormat']
-        table_data['table_location'] = \
-            response['Table']['StorageDescriptor']['Location']
-        table_data['serde_info'] = \
-            response['Table']['StorageDescriptor']['SerdeInfo']
-        table_data['partition_keys'] = response['Table']['PartitionKeys']
-
+        table_data = {
+            'input_format':
+                response['Table']['StorageDescriptor']['InputFormat'],
+            'output_format':
+                response['Table']['StorageDescriptor']['OutputFormat'],
+            'table_location':
+                response['Table']['StorageDescriptor']['Location'],
+            'serde_info':
+                response['Table']['StorageDescriptor']['SerdeInfo'],
+            'partition_keys': response['Table']['PartitionKeys']
+        }
         return table_data
 
     def process(self, table_name, s3_base_path, database_name,
@@ -99,8 +99,9 @@ def main():
     bkt_dest = args["BKT_DEST"]
     s3_path = f"s3://{bkt_dest}/tb_fido"
     glue_job = GlueJob(args)
-    table_name = "tbes2004_web_rgto_crdl"
-    database_name ="db_source_identificacaoeautenticacaodeclientes_customeriam_sor_01"    glue_table_name = "tb_fido"
+    database_name = \
+        "db_source_identificacaoeautenticacaodeclientes_customeriam_sor_01"
+    glue_table_name = "tb_fido"
     glue_job.process(table_name, s3_path, database_name, glue_table_name,
                      CatalogId)
     glue_job.commit()
